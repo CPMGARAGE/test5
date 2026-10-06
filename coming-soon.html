@@ -18,7 +18,7 @@
 <body data-page="soon">
 <main data-title="INCOMING" data-chip="IN DEVELOPMENT">
   <h2>WHAT IS NEXT</h2>
-  <p class="lead">The next additions to TerminalTanks, in the order they are likely to land.</p>
+  <p class="lead">What is being built for TerminalTanks next. The big items come first.</p>
   <div id="list"></div>
   <p class="muted">Dates are not promised. New releases are announced on <a href="https://github.com/ethanlabs101/TerminalTanks" target="_blank" rel="noopener">GitHub</a>.</p>
 </main>
@@ -26,7 +26,7 @@
 <script>
 /* The list lives in roadmap.json. status is "Building", "Designing" or "Planned". */
 fetch('roadmap.json').then((r) => r.json()).then((j) => {
-  document.getElementById('list').innerHTML = j.next.map((n) => '<div class="soon"><h3>' + n.name + '</h3><div class="' + (n.status === 'Building' ? 'warn' : 'muted') + '">' + n.status + '</div><p>' + n.text + '</p></div>').join('');
+  document.getElementById('list').innerHTML = j.next.map((n) => '<div class="soon"><h3>' + n.name + '</h3><div class="' + (n.status === 'Building' ? 'warn' : 'muted') + '">' + n.status + '</div><p>' + n.text + '</p>' + (n.items ? '<ul>' + n.items.map((i) => '<li>' + i + '</li>').join('') + '</ul>' : '') + '</div>').join('');
 }).catch(() => { document.getElementById('list').innerHTML = '<p class="muted">The list could not be loaded. Reload the page to try again.</p>'; });
 </script>
 </body>

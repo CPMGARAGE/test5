@@ -19,6 +19,7 @@ const TT = {
   let r = '';
   TANK.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') r += `<rect x="${x + 1}" y="${y + 3}" width="1.02" height="1.02" fill="${PAL[c]}"/>`; }));
   for (let i = 0; i < 6; i++) r += `<rect x="${7 + i * 0.9}" y="${3.5 - i * 0.55}" width="1.02" height="1.02" fill="#e2f4fa"/>`;
+  TT.sprite = r;
   const icon = document.createElement('link'); icon.rel = 'icon';
   icon.href = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 9" shape-rendering="crispEdges"><rect width="14" height="9" fill="#05090f"/>${r}</svg>`);
   document.head.appendChild(icon);

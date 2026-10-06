@@ -109,3 +109,25 @@ input[type=number]:focus { border-color:var(--primary); outline:none; }
 .item .type { display:inline-block; float:right; margin-left:8px; font-size:10px; letter-spacing:.14em; color:var(--kc); border:1px solid var(--kc); padding:0 6px; }
 .item b { color:var(--text); }
 .kb { border-left:3px solid var(--kc,var(--line-dim)); }
+
+/* 404 */
+.miss { display:block; width:100%; height:auto; margin:6px 0 0; }
+.miss .ridge1 { fill:#08131c; stroke:var(--line); stroke-width:1.5; } .miss .path { fill:none; stroke:var(--primary-dim); stroke-width:1.5; stroke-dasharray:3 7; }
+.miss .shell { fill:#fff; offset-path:path("M118 110 Q 330 -80 640 70"); offset-distance:0%; animation:fly 3.2s cubic-bezier(.3,.1,.7,.9) infinite; }
+@keyframes fly { 0% { offset-distance:0%; opacity:1; } 88% { opacity:1; } 100% { offset-distance:100%; opacity:0; } }
+.miss text { font:10px var(--mono); fill:var(--muted); letter-spacing:.2em; }
+.where td:first-child { white-space:nowrap; }
+@media (prefers-reduced-motion:reduce) { .miss .shell { animation:none; offset-distance:46%; } }
+/* catalog previews */
+.item.has-shot { cursor:zoom-in; } .item.has-shot:hover, .item.has-shot:focus-visible { background:var(--panel-hi); border-color:var(--line); }
+.item .shot { display:block; margin-top:6px; font-size:10px; letter-spacing:.14em; color:var(--primary-dim); }
+#peek { position:fixed; z-index:50; pointer-events:none; border:1px solid var(--line); background:var(--bg); padding:4px; box-shadow:0 0 30px rgba(0,0,0,.7),0 0 18px rgba(38,118,128,.4); }
+#peek img { display:block; width:320px; max-width:60vw; height:auto; }
+dialog#lb { border:3px double var(--line); background:var(--panel); color:var(--text); padding:0; width:min(96vw,980px); max-height:94vh; font:inherit; overflow:auto; }
+dialog#lb::backdrop { background:rgba(2,5,10,.82); }
+#lb header { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line-dim); flex-wrap:wrap; }
+#lb header b { color:var(--primary); letter-spacing:.14em; } #lb header .sp { flex:1; }
+#lb img { display:block; width:100%; height:auto; background:#000; }
+#lb p { margin:0; padding:8px 12px 12px; color:var(--muted); }
+.soon ul { margin:6px 0 0; padding-left:18px; max-width:72ch; } .soon li { margin:2px 0; }
+.clip video { display:block; width:100%; height:auto; border:1px solid var(--line); box-shadow:0 0 24px rgba(38,118,128,.25); background:#000; }

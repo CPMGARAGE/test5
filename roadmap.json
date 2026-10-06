@@ -1,12 +1,79 @@
 {
   "version": "1.4.0",
   "next": [
-    { "name": "More Tournament levels", "status": "Building", "text": "A longer climb past the Master's Citadel, with new bosses, tanks and shells to earn along the way." },
-    { "name": "New battlefields", "status": "Designing", "text": "More special maps with their own terrain rules, each tied to a mission or Tournament reward." },
-    { "name": "More home screens", "status": "Designing", "text": "New themes for the title screen, unlocked through play like the existing ones." },
-    { "name": "Match replays", "status": "Planned", "text": "Save a finished match and watch it back, shot by shot, with the wind of each turn shown." }
+    {
+      "name": "The big shop expansion",
+      "status": "Building",
+      "text": "Roughly three times the shop in every category, plus a new premium tier above Master pricing.",
+      "items": [
+        "About triple the tanks, ammo types, home screens and maps",
+        "Ammo with genuinely different behavior: unusual trajectories, multi-stage and delayed blasts, new terrain interactions",
+        "Five extra premium tanks and five extra premium ammo types, priced for the endgame",
+        "Prismatic tanks built from crystal and light, and the Eviscerator, a burning, smoking, red-hot machine"
+      ]
+    },
+    {
+      "name": "Tank creation suite",
+      "status": "Building",
+      "text": "Build your own tank from parts you have unlocked.",
+      "items": [
+        "Mix a turret, hull, tracks, barrel, glow, ambient effect and accent",
+        "Name it, write its lore, preview it, save it and equip it",
+        "Custom tanks are stored by stable part IDs, so they survive future updates"
+      ]
+    },
+    {
+      "name": "Terminal Tickets",
+      "status": "Planned",
+      "text": "A very expensive shop item that drops you into a random boss battle against one of ten bosses.",
+      "items": [
+        "Each boss has its own tank, map and ammo, and fights on a level with the strength of the Prismatic King or the Eviscerator",
+        "Win to collect every reward plus a new home screen",
+        "A beaten boss leaves the pool, so a new ticket never repeats one",
+        "Once all ten are defeated, the tickets sell out"
+      ]
+    },
+    {
+      "name": "Two-player and LAN overhaul",
+      "status": "Planned",
+      "text": "More control over matches, and clearer endings.",
+      "items": [
+        "Choose a map or play a random one, with wind on or off, synced across LAN",
+        "Leave an active match at any time, with a clear message and a safe return to the menu",
+        "Victory and loss screens that name the win condition for both players",
+        "Special Attack mode: skip two turns, then fire for a scaled-up, ammo-specific blast that deals 3 damage"
+      ]
+    },
+    {
+      "name": "The Mothership showdown",
+      "status": "Planned",
+      "text": "The final mission gets a proper structure.",
+      "items": [
+        "The Mothership is shielded until both drones are down",
+        "A reworked reward screen, where the prizes are the grand prize"
+      ]
+    },
+    {
+      "name": "Fixes and polish",
+      "status": "Planned",
+      "text": "A round of cleanup across the game.",
+      "items": [
+        "Proper scrolling in the shop, with keyboard navigation",
+        "Projectiles leaving from the actual barrel on the home screens",
+        "The UFO tank hovering above the ground",
+        "Glass Cannon moves from 1 HP to 2 HP",
+        "Boss Rush starts you on 4 health and shows how many bosses are left",
+        "Reward windows show only what you are actually receiving",
+        "Buddy System no longer drops you back to the missions menu on a keypress",
+        "Master and Secret edition home-screen terrain fixes",
+        "Cheat code counts always match the real content"
+      ]
+    }
   ],
   "notes": [
-    { "version": "1.4.0", "text": "Current release: 20 Tournament levels, 50 missions, 52 tanks, 52 shells, 29 special maps and 28 home screens. Save format version 4." }
+    {
+      "version": "1.4.0",
+      "text": "Current release: 20 Tournament levels, 50 missions, 52 tanks, 52 shells, 29 special maps and 28 home screens. Save format version 4."
+    }
   ]
 }
