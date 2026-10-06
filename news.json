@@ -1,0 +1,11 @@
+{
+  "posts": [
+    {
+      "date": "2026-10-06",
+      "title": "The TerminalTanks site is open",
+      "text": "The site now has a catalog of every tank, ammo type, map and home screen, a full list of cheat codes, and a save forge that builds or edits a save file you can import into the game.\n\nYou can still play in the browser from the Play button.",
+      "link": "catalog.html",
+      "linkText": "Browse the catalog"
+    }
+  ]
+}

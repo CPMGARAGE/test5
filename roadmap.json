@@ -1,0 +1,12 @@
+{
+  "version": "1.4.0",
+  "next": [
+    { "name": "More Tournament levels", "status": "Building", "text": "A longer climb past the Master's Citadel, with new bosses, tanks and shells to earn along the way." },
+    { "name": "New battlefields", "status": "Designing", "text": "More special maps with their own terrain rules, each tied to a mission or Tournament reward." },
+    { "name": "More home screens", "status": "Designing", "text": "New themes for the title screen, unlocked through play like the existing ones." },
+    { "name": "Match replays", "status": "Planned", "text": "Save a finished match and watch it back, shot by shot, with the wind of each turn shown." }
+  ],
+  "notes": [
+    { "version": "1.4.0", "text": "Current release: 20 Tournament levels, 50 missions, 52 tanks, 52 shells, 29 special maps and 28 home screens. Save format version 4." }
+  ]
+}

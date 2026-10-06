@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>About - TerminalTanks</title>
+<meta name="description" content="The story behind TerminalTanks and how the game is built.">
+<meta name="theme-color" content="#05090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="About - TerminalTanks">
+<meta property="og:description" content="The story behind TerminalTanks and how the game is built.">
+<meta property="og:image" content="https://ethanlabs101.github.io/TerminalTanks/preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://ethanlabs101.github.io/TerminalTanks/about.html">
+<link rel="stylesheet" href="site.css">
+</head>
+<body data-page="about">
+<main data-title="ABOUT">
+  <h2>THE STORY SO FAR</h2>
+  <p class="lead">You start at Boot Camp and finish at the Master's Citadel.</p>
+  <p>The Tournament is a road of twenty duels. Early guards teach you wind and power. Along the way you take on a glacier, a toxic marsh, a hall of mirrors and a graveyard shift, and each rival leaves you a tank and a shell to keep. Level 17, the Gatekeeper, is described in the game as the last guard on the Master's road.</p>
+  <p>The final three levels are the Master's own ground: the Forge, the Storm Spire and the Citadel, where the game calls the last duel one fought on ground few have seen. Win there and the Master difficulty, the Sovereign tank and the Aurora shell are yours.</p>
+  <h3>THE INVASION</h3>
+  <p>The missions tell a second story. They start as marathons against fresh opponents and grow into co-op fights, and then a saucer appears over the field with shields, hops and three-shot volleys. From the Scout to the Destroyer to the Overmind, the UFO fights get bigger until the last mission, the Mothership, where the alien flagship arrives with two drones and, as the game puts it, everything you have learned is needed at once.</p>
+
+  <h2>HOW IT IS BUILT</h2>
+  <p>TerminalTanks is one Python file of about 8,900 lines. It needs Python 3.10 or newer and a UTF-8 terminal of at least 96 by 28 characters. It uses no third-party packages: drawing, input and animation are all built on the standard library and plain ANSI escape sequences.</p>
+  <div class="kv">
+    <span>Rendering</span><span>ANSI escape sequences, no curses</span>
+    <span>Multiplayer</span><span>LAN play over TCP, with UDP discovery so hosts appear on their own</span>
+    <span>Fairness</span><span>The simulation is seeded and deterministic, and visual effects use their own random generator so they cannot change an outcome</span>
+    <span>Saves</span><span>One small JSON file, versioned, with migration for older saves</span>
+    <span>In the browser</span><span>The same game file, using its built-in web backend, on the Pyodide Python runtime with a hand-written canvas renderer</span>
+  </div>
+  <p>The deterministic design is what makes LAN play work: both machines run the same simulation from the same starting setup, so a shot only needs to send its angle and power. It also keeps matches reproducible.</p>
+  <h3>HOW THE BROWSER VERSION WORKS</h3>
+  <p>The browser version runs the same <code>terminaltanks.py</code> as the terminal, but it is not literally untouched. The file contains a web backend that sends the screen to the page as a grid of cells instead of ANSI text, and the page stubs the few operating-system terminal modules the game imports. Scenes, physics, AI and saves are the same code in both places.</p>
+  <p>The page draws that grid with its own canvas renderer, with no terminal library and no other third-party code. The one outside piece is Pyodide, the Python runtime itself, which downloads on your first visit (about 10 MB) and is cached after that. The game and its renderer still follow the project's rule of no dependencies of their own.</p>
+  <p>Saves have changed shape over time. The game still reads version 1 to 3 files and converts them. For example, the old Master fight at level 5 now lives at level 20, and its rewards carry over.</p>
+
+  <h2>RELEASE NOTES</h2>
+  <div id="notes"></div>
+  <div class="row">
+    <a class="btn big" href="https://github.com/ethanlabs101/TerminalTanks" target="_blank" rel="noopener">Source on GitHub</a>
+    <a class="btn big hot" href="play.html">Play</a>
+  </div>
+</main>
+<script src="site.js"></script>
+<script>
+fetch('roadmap.json').then((r) => r.json()).then((j) => {
+  document.getElementById('notes').innerHTML = j.notes.map((n) => '<div class="soon"><h3>Version ' + n.version + '</h3><p>' + n.text + '</p></div>').join('');
+}).catch(() => { document.getElementById('notes').innerHTML = '<p class="muted">Release notes could not be loaded.</p>'; });
+</script>
+</body>
+</html>

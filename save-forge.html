@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Save forge - TerminalTanks</title>
+<meta name="description" content="Build a TerminalTanks save file with the tanks, shells, maps and progress you choose, then import it into the game.">
+<meta name="theme-color" content="#05090f">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Save forge - TerminalTanks">
+<meta property="og:description" content="Build a TerminalTanks save file with the tanks, shells, maps and progress you choose, then import it into the game.">
+<meta property="og:image" content="https://ethanlabs101.github.io/TerminalTanks/preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://ethanlabs101.github.io/TerminalTanks/save-forge.html">
+<link rel="stylesheet" href="site.css">
+</head>
+<body data-page="forge">
+<main data-title="SAVE FORGE">
+  <h2>BUILD A SAVE FILE</h2>
+  <p class="lead">Pick what you want unlocked and download a backup file the game can import.</p>
+  <p>Open the game, choose <b>Save data</b>, then <b>Import backup</b>. <span class="warn">Importing replaces the save on that device.</span> To keep your real progress, settings and loadouts, load your own backup below and edit that instead of starting from nothing. Everything runs in this page; nothing is uploaded.</p>
+  <div class="drop"><label>Edit an existing backup: <input type="file" id="load" accept="application/json,.json"></label><div class="muted" id="loaded">Starting from a blank save.</div></div>
+  <div class="row" style="margin-top:8px" id="presets">
+    <button class="btn" type="button" data-p="all">Everything</button>
+    <button class="btn" type="button" data-p="nomaster">Everything except Master</button>
+    <button class="btn" type="button" data-p="gear">Collector (gear only)</button>
+    <button class="btn" type="button" data-p="tour">Tournament complete</button>
+    <button class="btn" type="button" id="none">Clear selection</button>
+  </div>
+
+  <fieldset><legend>PROGRESS</legend>
+    <div class="fields">
+      <label class="f">Tournament levels cleared (0 to 20)<input type="number" id="lv" min="0" max="20" value="0" inputmode="numeric"></label>
+      <label class="f">Missions cleared (0 to 50)<input type="number" id="ms" min="0" max="50" value="0" inputmode="numeric"></label>
+    </div>
+    <p class="muted">Levels and missions are cleared in order, so 7 means 1 through 7. Clearing a level also unlocks its tank and shell, and later ones add their maps and home screens.</p>
+  </fieldset>
+  <fieldset><legend>WALLET</legend>
+    <div class="fields">
+      <label class="f">Coins<input type="number" id="coins" min="0" max="999999" value="0" inputmode="numeric"></label>
+      <label class="f">Tournament credits<input type="number" id="credits" min="0" max="999999" value="0" inputmode="numeric"></label>
+    </div>
+  </fieldset>
+  <fieldset><legend>LOADOUTS</legend>
+    <div class="fields" id="lo"></div>
+    <p class="muted">The game resets a loadout to Ranger and Standard if the tank or shell is not unlocked, so pick items you have also ticked or earned.</p>
+  </fieldset>
+  <div id="groups"></div>
+
+  <div id="sum"><span id="count"></span><button class="btn big hot" id="make" type="button">Download save file</button></div>
+</main>
+<script src="site.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  let base = null;
+  const G = [
+    ['TANKS', TT.tanks.map((k) => ['tank:' + k, k.toUpperCase()])],
+    ['SHELLS', TT.ammo.map((k) => ['ammo:' + k, k.toUpperCase()])],
+    ['MAPS', TT.maps.map((n) => ['map:' + TT.mapKey(n), n])],
+    ['HOME SCREENS', TT.themes.map((k) => ['theme:' + k.toLowerCase(), k])],
+    ['TOURNAMENT LEVELS OPEN TO PLAY', TT.levels.map((n, i) => i ? ['level:' + (i + 1), (i + 1) + ' ' + n] : null).filter(Boolean)],
+    ['FEATURES', [['master_difficulty', 'MASTER DIFFICULTY'], ['rgb:hull', 'RGB HULL COLOR'], ['rgb:shell', 'RGB SHELL COLOR']]],
+  ];
+  const box = document.getElementById('groups');
+  box.innerHTML = G.map(([name, items], g) => `<fieldset data-g="${g}"><legend>${name}</legend>
+    <div class="grp"><button type="button" class="btn" data-on>All</button><button type="button" class="btn" data-off>None</button></div>
+    <div class="chips">${items.map(([uid, label]) => `<label><input type="checkbox" value="${uid}"><span>${label}</span></label>`).join('')}</div></fieldset>`).join('');
+  const MASTER = ['tank:sovereign', 'ammo:aurora', 'map:citadel', 'master_difficulty', 'theme:master'];
+  const opt = (arr, p) => arr.map((k) => `<option value="${k}">${k.toUpperCase()}</option>`).join('');
+  $('lo').innerHTML = [['p1t', 'Player 1 tank', ['ranger', ...TT.tanks]], ['p1a', 'Player 1 shell', ['standard', ...TT.ammo]], ['p2t', 'Player 2 tank', ['ranger', ...TT.tanks]], ['p2a', 'Player 2 shell', ['standard', ...TT.ammo]]].map(([id, l, a]) => `<label class="f">${l}<select id="${id}">${opt(a)}</select></label>`).join('');
+  const ticks = () => [...box.querySelectorAll('input')];
+  const num = (id, max) => Math.max(0, Math.min(max, parseInt($(id).value, 10) || 0));
+  function refresh() {
+    const n = ticks().filter((i) => i.checked).length;
+    $('count').textContent = `${n} unlock${n === 1 ? '' : 's'} granted, ${num('lv', 20)} level${num('lv', 20) === 1 ? '' : 's'} and ${num('ms', 50)} mission${num('ms', 50) === 1 ? '' : 's'} cleared`;
+  }
+  const setAll = (list, v) => { list.forEach((i) => { i.checked = v; }); refresh(); };
+  box.addEventListener('click', (e) => {
+    const f = e.target.closest('fieldset'); if (!f) return;
+    if (e.target.matches('[data-on]')) setAll([...f.querySelectorAll('input')], true);
+    if (e.target.matches('[data-off]')) setAll([...f.querySelectorAll('input')], false);
+  });
+  document.addEventListener('input', refresh);
+  const mark = (fn) => ticks().forEach((i) => { i.checked = fn(i.value); });
+  $('presets').addEventListener('click', (e) => {
+    const p = e.target.dataset.p; if (!p) return;
+    if (p === 'all') { mark(() => true); }
+    if (p === 'nomaster') { mark((u) => !MASTER.includes(u)); $('lv').value = Math.min(num('lv', 20), 19); }
+    if (p === 'gear') mark((u) => /^(tank|ammo|map|theme):/.test(u) || u.startsWith('rgb:'));
+    if (p === 'tour') { $('lv').value = 20; }
+    refresh();
+  });
+  $('load').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const b = JSON.parse(await f.text());
+      if (!b || b.app !== 'TerminalTanks' || !Array.isArray(b.files)) throw new Error('not a TerminalTanks backup');
+      const sf = b.files.find((x) => /(^|\/)save\.json$/.test(x.path)); if (!sf) throw new Error('this backup has no save.json yet');
+      const d = JSON.parse(atob(sf.b64));
+      base = { bundle: b, path: sf.path, doc: d };
+      const have = new Set(d.granted || []); mark((u) => have.has(u));
+      $('lv').value = Math.min(20, Math.max(0, ...(d.tournament_completed || [0]))); $('ms').value = Math.min(50, Math.max(0, ...(d.missions_completed || [0])));
+      $('coins').value = (d.wallet || {}).coins || 0; $('credits').value = (d.wallet || {}).credits || 0;
+      (d.loadouts || []).slice(0, 2).forEach((l, i) => { if ($('p' + (i + 1) + 't')) { $('p' + (i + 1) + 't').value = l.tank; $('p' + (i + 1) + 'a').value = l.ammo; } });
+      $('loaded').textContent = 'Loaded ' + f.name + '. Your settings and loadout colors will be kept.'; refresh();
+    } catch (err) { $('loaded').textContent = 'Could not read that file: ' + err.message + '.'; }
+  };
+  $('none').onclick = () => { setAll(ticks(), false); ['lv', 'ms', 'coins', 'credits'].forEach((id) => { $(id).value = 0; }); refresh(); };
+  $('make').onclick = () => {
+    const range = (n) => Array.from({ length: n }, (_, i) => i + 1);
+    const lv = num('lv', 20), ms = num('ms', 50);
+    const doc = {
+      version: 4,
+      tournament_completed: range(lv),
+      granted: ticks().filter((i) => i.checked).map((i) => i.value).sort(),
+      missions_completed: range(ms),
+      missions_paid: range(ms),
+      wallet: { coins: num('coins', 999999), credits: num('credits', 999999) },
+      loadouts: [['CYAN', 'YELLOW'], ['ORANGE', 'MAGENTA']].map(([tc, sc], i) => ({ tank: $('p' + (i + 1) + 't').value, tank_color: tc, ammo: $('p' + (i + 1) + 'a').value, shot_color: sc })),
+      settings: {},
+    };
+    if (base) { const o = base.doc; doc.settings = o.settings || {}; doc.loadouts.forEach((l, i) => { const old = (o.loadouts || [])[i]; if (old) { l.tank_color = old.tank_color; l.shot_color = old.shot_color; } }); doc.missions_paid = [...new Set([...(o.missions_paid || []), ...doc.missions_paid])].sort((x, y) => x - y); }
+    const keep = base ? base.bundle.files.filter((x) => x.path !== base.path) : [];
+    const bundle = { app: 'TerminalTanks', format: 1, exported: new Date().toISOString(), files: [...keep, { path: base ? base.path : '.config/terminaltanks/save.json', b64: btoa(JSON.stringify(doc, null, 2)) }] };
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' }));
+    a.download = 'terminaltanks-save.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+  refresh();
+})();
+</script>
+</body>
+</html>
