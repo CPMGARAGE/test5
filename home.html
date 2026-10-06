@@ -17,13 +17,13 @@
 </head>
 <body data-page="home">
 <main data-title="TERMINALTANKS.PY" data-chip="ONLINE">
-  <img src="preview.png" alt="Terminal Tanks image"> 
   <h2>TANK ARTILLERY, DRAWN IN A TERMINAL</h2>
   <p class="lead">Set your angle, set your power, read the wind, and fire.</p>
   <figure class="clip" id="clip">
-    <video id="vid" muted loop playsinline autoplay preload="metadata" poster="demo.jpg" aria-label="Gameplay: two tanks trade shells across a ridge as the wind shifts">
+    <img class="cover" src="preview.png" width="1200" height="630" alt="TerminalTanks: a cyan tank on a ridge under a night sky">
+    <video id="vid" muted loop playsinline preload="metadata" hidden aria-label="Gameplay: two tanks trade shells across a ridge as the wind shifts">
       <source src="demo.webm" type="video/webm">
-      <source src="demo.mp4" type="video/mp4" onerror="document.getElementById('clip').hidden=true">
+      <source src="demo.mp4" type="video/mp4">
     </video>
   </figure>
   <p>Each turn the wind changes and the ground under you is part of the weapon: shells carve craters, and a blast beside a tank still counts. Play it here with nothing to install, on a keyboard, a touchscreen or a gamepad.</p>
@@ -32,6 +32,26 @@
     <a class="btn big" href="catalog.html">Browse the catalog</a>
     <a class="btn big" href="save-forge.html">Save forge</a>
   </div>
+
+  <section id="shots">
+    <h2>IN THE FIELD</h2>
+    <!-- Replace each src (and the matching href) with your own screenshot, and edit the alt and caption.
+         Any image that is missing is hidden automatically, and the whole section hides if none load. -->
+    <div class="gallery">
+      <figure>
+        <a href="shots/home-1.png" target="_blank" rel="noopener"><img src="shots/home-1.png" width="1280" height="720" loading="lazy" decoding="async" alt="REPLACE: describe screenshot 1"></a>
+        <figcaption>REPLACE: caption for screenshot 1</figcaption>
+      </figure>
+      <figure>
+        <a href="shots/home-2.png" target="_blank" rel="noopener"><img src="shots/home-2.png" width="1280" height="720" loading="lazy" decoding="async" alt="REPLACE: describe screenshot 2"></a>
+        <figcaption>REPLACE: caption for screenshot 2</figcaption>
+      </figure>
+      <figure>
+        <a href="shots/home-3.png" target="_blank" rel="noopener"><img src="shots/home-3.png" width="1280" height="720" loading="lazy" decoding="async" alt="REPLACE: describe screenshot 3"></a>
+        <figcaption>REPLACE: caption for screenshot 3</figcaption>
+      </figure>
+    </div>
+  </section>
 
   <h2>NEWS</h2>
   <div id="news"><p class="muted">Loading news.</p></div>
@@ -57,8 +77,12 @@
 <script>
 (function () {
   const v = document.getElementById('vid'); if (!v) return;
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { v.removeAttribute('autoplay'); v.controls = true; return; }
-  new IntersectionObserver((e) => { e[0].isIntersecting ? v.play().catch(() => {}) : v.pause(); }, { threshold: 0.25 }).observe(v);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  v.addEventListener('loadeddata', () => { v.hidden = false; if (still) v.controls = true; });
+  if (!still) new IntersectionObserver((e) => { e[0].isIntersecting ? v.play().catch(() => {}) : v.pause(); }, { threshold: 0.25 }).observe(v);
+  const shots = document.getElementById('shots');
+  const figs = [...shots.querySelectorAll('figure')], check = () => { shots.hidden = figs.every((f) => f.hidden); };
+  figs.forEach((f) => { const im = f.querySelector('img'); im.addEventListener('error', () => { f.hidden = true; check(); }); });
 })();
 </script>
 <script>
