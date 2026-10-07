@@ -3,13 +3,14 @@
 
 Credit: ethanlabs101 - https://github.com/ethanlabs101
 
-Run:   python3 terminaltanks8.py
+Run:   python3 terminaltanks9.py
 Needs: Python 3.10+, a UTF-8 terminal of at least 96x28 (100x30 recommended).
 No third-party packages: rendering, input and animation are built on the
 standard library and plain ANSI escape sequences.
 """
 from __future__ import annotations
 
+import argparse
 import argparse
 import atexit
 import colorsys
@@ -39,7 +40,7 @@ elif not IS_WEB:
     import termios
     import tty
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 CREDIT_NAME = "ethanlabs101"
 CREDIT_URL = "github.com/ethanlabs101"
 
@@ -760,9 +761,10 @@ class Settings:
     home_mode: str = "CLASSIC"
 
 
-SHOP_THEMES = ('SUNSET', 'MEADOW', 'DESERT', 'HARBOR', 'AUTUMN', 'ARCTIC', 'JUNGLE', 'NEON', 'DEEPSEA', 'STORMFRONT', 'MOLTEN', 'CRYSTALCAVE', 'BLOODMOON', 'EMERALD', 'GOLDENDUNES', 'ECLIPSE', 'VOIDRIFT', 'SOLARCROWN', 'STARFALL', 'CELESTIAL')
+SHOP_THEMES = ('SUNSET', 'MEADOW', 'DESERT', 'HARBOR', 'AUTUMN', 'DAWN', 'PRAIRIE', 'HARVEST', 'LAKESIDE', 'CAMPFIRE', 'TWILIGHT', 'FOGBANK', 'SPRING', 'MARKET', 'MONSOON', 'ARCTIC', 'JUNGLE', 'NEON', 'DEEPSEA', 'STORMFRONT', 'SYNTHWAVE', 'TOKYO', 'PYRAMIDS', 'TUNDRA', 'CANYONS', 'LAGOON', 'THUNDERHEAD', 'STEAMTOWN', 'ORBITRING', 'BAMBOO', 'MOLTEN', 'CRYSTALCAVE', 'BLOODMOON', 'EMERALD', 'GOLDENDUNES', 'NIGHTCITY', 'LAVAFALLS', 'VAPORWAVE', 'DEADSEA', 'SKYFORT', 'CYBERPUNK', 'MAELSTROM', 'ICEPALACE', 'SOLARSTORM', 'GHOSTTOWN', 'ECLIPSE', 'VOIDRIFT', 'SOLARCROWN', 'STARFALL', 'CELESTIAL', 'QUASAR', 'GALAXY', 'NEBULAR', 'HYPERGATE', 'BLACKHOLE', 'AURORAKING', 'CRYSTALPEAK', 'DRAGONSKY', 'CELESTIA', 'ASTRALSEA')
 MISSION_THEMES = ('OUTPOST', 'RADAR', 'WARZONE', 'ORBITAL', 'DEEPSPACE', 'INVASION')
-HOME_ORDER = ("CLASSIC",) + SHOP_THEMES + MISSION_THEMES + ("MASTER", "SECRET")   # every home screen, in cycle order
+TICKET_THEMES = ('VOLTCITY', 'CLOCKWORKS', 'FROSTCATHEDRAL', 'SUNTEMPLE', 'SUNKENCITY', 'PYRAMIDPLAIN', 'CHEMWORKS', 'GOTHICKEEP', 'ORBITALCITY', 'PAGODAPEAK')
+HOME_ORDER = ("CLASSIC",) + SHOP_THEMES + MISSION_THEMES + TICKET_THEMES + ("MASTER", "SECRET")   # every home screen, in cycle order
 
 SETTING_ROWS = (
     ("AI DIFFICULTY", "difficulty", (("EASY", Difficulty.EASY), ("NORMAL", Difficulty.NORMAL), ("HARD", Difficulty.HARD), ("MASTER", Difficulty.MASTER)),
@@ -813,6 +815,7 @@ class Theme:
     star_density: float
     aurora: bool = False
     fx: str = ""            # extra animated sky layer: "embers" | "motes" | "storm" (see Scenery.draw_fx)
+    buildings: str = ""     # a key of BUILDING_STYLES: a silhouette skyline baked into the sky behind the terrain
 
 
 @dataclass(frozen=True)
@@ -998,11 +1001,11 @@ _TIER_ACCENT = ((170, 205, 175), (120, 190, 255), (255, 165, 90), (255, 206, 100
 
 
 def _shop_map(tier: int, name: str, desc: str, half, theme, smooth: bool = False, rough: float = 0.0,
-              spawns: tuple = (0.08, 0.92), fx: str = "", aurora: bool = False) -> MapDefinition:
+              spawns: tuple = (0.08, 0.92), fx: str = "", aurora: bool = False, buildings: str = "") -> MapDefinition:
     pts = _mirror(half)
     th = _THEMES[theme] if isinstance(theme, str) else theme
-    if fx or aurora:
-        th = replace(th, fx=fx or th.fx, aurora=aurora or th.aurora)
+    if fx or aurora or buildings:
+        th = replace(th, fx=fx or th.fx, aurora=aurora or th.aurora, buildings=buildings or th.buildings)
     cover, relief = _rate(pts, spawns)
     return MapDefinition(name.lower().replace(" ", "-"), name, desc, pts, smooth, rough, spawns, th, cover, relief, True,
                          _TIER_ACCENT[tier])
@@ -1060,7 +1063,57 @@ SHOP_MAPS: tuple[MapDefinition, ...] = (
               Theme((16, 4, 8), (230, 100, 50), (90, 30, 40), (255, 230, 140), (255, 210, 110), (150, 100, 60), (80, 56, 50),
                     (28, 14, 20), 0.008, True, "embers"), False, 0.004, (.07, .93)),
 )
-assert len(SHOP_MAPS) == 20
+_SHOP_BASE_MAPS = SHOP_MAPS
+_M = _shop_map
+_NEW_MAPS = (
+    (  # cheap
+        _M(0, "SLEEPY HOLLOW", "A gentle bowl: shells roll to the middle.", [(0, .4), (.2, .25), (.35, .2), (.5, .18)], "valley", True),
+        _M(0, "TWIN HILLS", "Two matched hills with a flat between.", [(0, .2), (.1, .35), (.2, .2), (.35, .2), (.45, .4), (.5, .45)], "steppe", True),
+        _M(0, "FANG ROW", "A long row of teeth.", [(0, .3), (.05, .4), (.1, .28), (.15, .4), (.2, .28), (.25, .4), (.3, .28), (.35, .4), (.4, .28), (.45, .4), (.5, .3)], "rust"),
+        _M(0, "THE DITCH", "Flat ground and one deep, narrow ditch.", [(0, .35), (.4, .35), (.45, .05), (.5, .03)], "swamp"),
+        _M(0, "MESA", "Two high mesas and a step down.", [(0, .5), (.2, .5), (.25, .3), (.5, .3)], "canyon"),
+        _M(0, "BUMPY ROAD", "Nothing but small, random bumps.", [(0, .3), (.5, .32)], "waste", False, 0.08),
+        _M(0, "WAVES", "Rolling swells and troughs.", [(0, .3), (.06, .42), (.12, .3), (.18, .18), (.24, .3), (.3, .42), (.36, .3), (.42, .18), (.5, .3)], "beach", True),
+        _M(0, "STAIRCASE", "Climbing steps toward the middle.", [(0, .15), (.1, .15), (.12, .25), (.22, .25), (.24, .35), (.34, .35), (.36, .45), (.5, .45)], "alpine"),
+        _M(0, "FOXHOLES", "Small pits to duck into.", [(0, .3), (.08, .3), (.1, .15), (.14, .15), (.16, .3), (.28, .3), (.3, .15), (.34, .15), (.36, .3), (.5, .3)], "valley"),
+        _M(0, "LONE TREE", "One tall spire in a flat meadow.", [(0, .2), (.45, .2), (.48, .7), (.5, .72)], "jungle", False, 0.0, (.08, .92), "fireflies")),
+    (  # mid
+        _M(1, "NAVE", "Twin arch towers flanking a long hall.", [(0, .25), (.12, .25), (.14, .6), (.17, .6), (.19, .25), (.3, .25), (.34, .5), (.5, .5)], "midnight"),
+        _M(1, "HANGING GARDENS", "Alternating green terraces.", [(0, .5), (.1, .5), (.12, .3), (.2, .3), (.22, .55), (.3, .55), (.32, .35), (.5, .35)], "jungle", False, 0.0, (.08, .92), "fireflies"),
+        _M(1, "CREVASSE", "A glacier split by a deep crack.", [(0, .6), (.15, .6), (.2, .1), (.24, .1), (.28, .5), (.5, .5)], "arctic", False, 0.0, (.08, .92), "snow"),
+        _M(1, "SLUDGE PITS", "Toxic pools between low banks.", [(0, .3), (.1, .3), (.14, .08), (.22, .08), (.26, .3), (.34, .3), (.38, .1), (.5, .1)], "toxic", False, 0.0, (.08, .92), "ash"),
+        _M(1, "VOLCANO RIM", "A central caldera and ember rain.", [(0, .2), (.2, .2), (.3, .55), (.38, .7), (.42, .35), (.5, .3)], "volcano", False, 0.0, (.08, .92), "embers"),
+        _M(1, "OASIS", "Dunes around a sunken oasis.", [(0, .4), (.12, .3), (.22, .45), (.34, .25), (.4, .12), (.5, .1)], "steppe", True),
+        _M(1, "RAIL YARD", "Low walls like freight cars.", [(0, .2), (.1, .2), (.11, .35), (.14, .35), (.15, .2), (.3, .2), (.31, .35), (.34, .35), (.35, .2), (.5, .2)], "steel"),
+        _M(1, "MOON BASE", "Cratered grey regolith.", [(0, .3), (.1, .3), (.14, .1), (.22, .1), (.26, .32), (.36, .32), (.4, .15), (.5, .15)], "moon", False, 0.0, (.08, .92), "stardust"),
+        _M(1, "WINDMILL FIELD", "Hills with tall thin windmills.", [(0, .25), (.1, .35), (.12, .55), (.13, .35), (.25, .3), (.3, .5), (.31, .3), (.5, .25)], "valley"),
+        _M(1, "BONE YARD", "Ribs of some enormous creature.", [(0, .2), (.08, .4), (.1, .2), (.16, .45), (.18, .2), (.24, .5), (.26, .2), (.32, .4), (.34, .2), (.5, .22)], "rust", False, 0.0, (.08, .92), "ash")),
+    (  # pro
+        _M(2, "THE SPIRAL", "Terraces wind up to a central summit.", [(0, .1), (.1, .1), (.12, .2), (.2, .2), (.22, .3), (.3, .3), (.32, .45), (.4, .45), (.42, .6), (.5, .6)], "cyber", False, 0.0, (.08, .92), "stardust"),
+        _M(2, "SKYSCRAPER ROW", "A downtown of sheer towers.", [(0, .3), (.08, .3), (.09, .7), (.14, .7), (.15, .3), (.2, .3), (.21, .9), (.26, .9), (.27, .3), (.32, .3), (.33, .6), (.38, .6), (.39, .3), (.5, .3)], "midnight", False, 0.0, (.08, .92), "stardust", False, "skyline"),
+        _M(2, "THE FUNNEL", "A huge V: everything slides inward.", [(0, .7), (.2, .55), (.35, .25), (.5, .04)], "steel"),
+        _M(2, "ICE SPIKES", "Needles of frozen rock.", [(0, .3), (.06, .65), (.09, .3), (.15, .8), (.18, .3), (.25, .55), (.28, .3), (.5, .3)], "arctic", False, 0.0, (.08, .92), "snow"),
+        _M(2, "LAVA FLOW", "Cooled cliffs stepping down to the fire.", [(0, .8), (.1, .8), (.12, .55), (.25, .55), (.27, .3), (.4, .3), (.42, .1), (.5, .1)], "volcano", False, 0.0, (.08, .92), "embers"),
+        _M(2, "TWIN FORTS", "Two fortress blocks and a killing field.", [(0, .2), (.05, .2), (.06, .7), (.2, .7), (.21, .5), (.25, .5), (.26, .15), (.5, .15)], "rust", False, 0.0, (.08, .92), "", False, "castle"),
+        _M(2, "CORAL REEF", "Organic, lumpy cover.", [(0, .2), (.05, .45), (.1, .3), (.16, .55), (.22, .25), (.28, .5), (.34, .3), (.4, .45), (.5, .3)], "beach", False, 0.0, (.08, .92), "fireflies"),
+        _M(2, "TWIN CLIFFS", "Sheer cliffs at both edges.", [(0, .9), (.12, .9), (.14, .3), (.5, .1)], "canyon"),
+        _M(2, "PIPE ORGAN", "Columns of rising height.", [(0, .2), (.04, .2), (.05, .35), (.1, .35), (.11, .5), (.16, .5), (.17, .65), (.22, .65), (.23, .8), (.28, .8), (.29, .3), (.5, .3)], "cyber"),
+        _M(2, "SHATTERED MOON", "Floating-looking islands between bottomless gaps.", [(0, .4), (.06, .4), (.08, .05), (.12, .05), (.14, .55), (.2, .55), (.22, .05), (.26, .05), (.28, .45), (.34, .45), (.36, .05), (.5, .05)], "moon", False, 0.0, (.08, .92), "stardust")),
+    (  # master tier
+        _M(3, "OBSIDIAN SPIRES", "Jagged black glass over a lava sky.", [(0, .4), (.06, .8), (.1, .35), (.16, .95), (.2, .3), (.28, .85), (.34, .3), (.42, .98), (.5, .5)], _ECLIPSE, False, 0.004, (.07, .93)),
+        _M(3, "AURORA FJORD", "A narrow valley under a curtain of light.", [(0, .98), (.12, .98), (.16, .5), (.2, .08), (.5, .05)], replace(_THEMES["arctic"], aurora=True, fx="snow"), False, 0.0, (.07, .93)),
+        _M(3, "CRYSTAL CAVERNS", "A field of glittering crystal teeth.", [(0, .3), (.04, .6), (.08, .25), (.12, .8), (.16, .3), (.22, .7), (.26, .25), (.32, .9), (.36, .3), (.44, .75), (.5, .4)], _SANCTUM, False, 0.0, (.07, .93)),
+        _M(3, "STARFALL PLATEAU", "A high plateau with a single spire.", [(0, .6), (.35, .6), (.4, .55), (.44, .55), (.46, .98), (.5, .98)], _ASTRAL, False, 0.003, (.07, .93)),
+        _M(3, "SOLAR FORGE", "Stepped furnace terraces under a burning sky.", [(0, .15), (.08, .15), (.1, .3), (.18, .3), (.2, .5), (.28, .5), (.3, .7), (.38, .7), (.4, .9), (.5, .9)], _ECLIPSE, False, 0.0, (.07, .93)),
+        _M(3, "NEBULA GARDENS", "Floating gardens in a violet river of stars.", [(0, .45), (.08, .45), (.1, .25), (.2, .25), (.22, .6), (.3, .6), (.32, .3), (.42, .3), (.44, .75), (.5, .75)], _ASTRAL, False, 0.0, (.07, .93)),
+        _M(3, "TITAN'S THRONE", "A colossal stone chair at the centre.", [(0, .3), (.15, .3), (.16, .55), (.22, .55), (.23, .3), (.3, .3), (.31, .7), (.4, .7), (.41, .95), (.5, .95)], replace(_THEMES["steel"], aurora=True), False, 0.0, (.07, .93)),
+        _M(3, "GLITCH ZONE", "Corrupted, chaotic terrain.", [(0, .4), (.5, .4)], replace(_THEMES["cyber"], aurora=True, fx="stardust"), False, 0.22, (.07, .93)),
+        _M(3, "THE LABYRINTH", "A maze of tall and short walls.", [(0, .2), (.05, .2), (.06, .7), (.08, .7), (.09, .2), (.14, .2), (.15, .7), (.17, .7), (.18, .2), (.23, .2), (.24, .7), (.26, .7), (.27, .2), (.32, .2), (.33, .7), (.35, .7), (.36, .2), (.5, .2)], replace(_THEMES["midnight"], aurora=True), False, 0.0, (.07, .93)),
+        _M(3, "CELESTIAL STEPS", "Giant stairs that climb into the aurora.", [(0, .1), (.06, .1), (.08, .22), (.16, .22), (.18, .36), (.26, .36), (.28, .5), (.36, .5), (.38, .66), (.5, .66)], _SANCTUM, False, 0.0, (.07, .93))),
+)
+SHOP_MAPS = (_SHOP_BASE_MAPS[0:5] + _NEW_MAPS[0] + _SHOP_BASE_MAPS[5:10] + _NEW_MAPS[1] + _SHOP_BASE_MAPS[10:15] + _NEW_MAPS[2]
+             + _SHOP_BASE_MAPS[15:20] + _NEW_MAPS[3])
+assert len(SHOP_MAPS) == 60
 
 _SPACE = Theme((2, 4, 24), (40, 70, 170), (16, 24, 80), (190, 220, 255), (170, 210, 255), (90, 120, 180), (50, 70, 120),
                (14, 20, 44), 0.014, True, "stardust")
@@ -1084,7 +1137,20 @@ MISSION_MAPS: tuple[MapDefinition, ...] = (
               [(0, .3), (.1, .3), (.14, .5), (.2, .5), (.24, .3), (.3, .3), (.34, .55), (.38, .55), (.42, .4), (.5, .6)],
               _ALIEN, False, 0.004, (.07, .93), "", True),
 )
-SPECIAL_MAPS: tuple[MapDefinition, ...] = (FORGE_MAP, SPIRE_MAP, MASTER_MAP) + SHOP_MAPS + MISSION_MAPS
+_K = lambda name, desc, half, theme, fx="", aurora=False, b="": _shop_map(3, name, desc, half, theme, False, 0.0, (.07, .93), fx, aurora, b)
+TICKET_MAPS: tuple[MapDefinition, ...] = (
+    _K("NEON SKYLINE", "A glittering city of towers behind the battlefield.", [(0, .3), (.15, .3), (.17, .5), (.22, .5), (.24, .3), (.34, .3), (.36, .4), (.5, .4)], "midnight", "stardust", False, "skyline"),
+    _K("CLOCK PLAZA", "A vast clock tower rises over the plaza.", [(0, .3), (.2, .3), (.3, .2), (.5, .2)], "steel", "", False, "clock"),
+    _K("FROZEN CATHEDRAL", "A cathedral of ice under the aurora.", [(0, .4), (.1, .4), (.15, .55), (.2, .4), (.35, .25), (.5, .25)], "arctic", "snow", True, "cathedral"),
+    _K("SUN TEMPLE", "A great stepped temple catches the last light.", [(0, .25), (.12, .25), (.14, .4), (.22, .4), (.24, .55), (.32, .55), (.34, .7), (.5, .7)], _ECLIPSE, "", False, "temple"),
+    _K("SUNKEN METROPOLIS", "Broken towers of a drowned city.", [(0, .15), (.1, .15), (.12, .35), (.15, .12), (.25, .12), (.28, .4), (.5, .1)], "midnight", "fireflies", False, "ruins"),
+    _K("PYRAMID PLAIN", "Three pyramids on the horizon.", [(0, .2), (.2, .2), (.3, .3), (.5, .3)], "steppe", "ash", False, "pyramids"),
+    _K("CHEMICAL WORKS", "Chimneys and sawtooth roofs, smoke in the air.", [(0, .3), (.1, .3), (.12, .15), (.2, .15), (.22, .3), (.5, .3)], "toxic", "ash", False, "factory"),
+    _K("GOTHIC KEEP", "A castle of towers and battlements.", [(0, .25), (.15, .25), (.17, .6), (.24, .6), (.26, .25), (.5, .25)], "midnight", "", False, "castle"),
+    _K("ORBITAL CITY", "A space station city above a blue world.", [(0, .35), (.2, .35), (.25, .5), (.35, .5), (.4, .35), (.5, .35)], _SPACE, "stardust", True, "station"),
+    _K("PAGODA PEAK", "Tiered pagodas on a snowy summit.", [(0, .5), (.15, .5), (.2, .35), (.3, .35), (.35, .6), (.5, .6)], "alpine", "snow", False, "pagoda"),
+)
+SPECIAL_MAPS: tuple[MapDefinition, ...] = (FORGE_MAP, SPIRE_MAP, MASTER_MAP) + SHOP_MAPS + MISSION_MAPS + TICKET_MAPS
 SPECIAL_MAP_BY_KEY = {m.key: m for m in SPECIAL_MAPS}
 assert len({m.key for m in MAPS + SPECIAL_MAPS}) == len(MAPS) + len(SPECIAL_MAPS)
 
@@ -1178,12 +1244,138 @@ def _terrain_smooth(self, cx: float, r: float) -> tuple[int, int]:
 Terrain.mound, Terrain.trench, Terrain.smooth = _terrain_mound, _terrain_trench, _terrain_smooth
 
 
+# ---- Background buildings, baked once into a map's sky. Every style is a few primitives on a baseline; windows are lit
+# deterministically so both LAN machines (and every redraw) show the same city.
+def _b_rect(put, x0, y0, w, h, col):
+    for x in range(x0, x0 + w):
+        for y in range(y0, y0 + h):
+            put(x, y, col)
+
+
+def _b_tri(put, cx, y0, half, h, col):
+    for k in range(h):
+        hw = int(half * (1 - k / h))
+        for x in range(cx - hw, cx + hw + 1):
+            put(x, y0 + k, col)
+
+
+def _b_dome(put, cx, y0, rx, ry, col):
+    for x in range(cx - rx, cx + rx + 1):
+        for y in range(y0, y0 + ry):
+            if ((x - cx) / rx) ** 2 + ((y - y0) / ry) ** 2 <= 1:
+                put(x, y, col)
+
+
+def _b_windows(put, x0, y0, w, h, lit, seed):
+    for x in range(x0 + 1, x0 + w - 1, 2):
+        for y in range(y0 + 2, y0 + h - 1, 3):
+            if (x * 7 + y * 13 + seed) % 5 < 3:
+                put(x, y, lit)
+
+
+def _bake_buildings(kind: str, w: int, h: int, base_y: int, col: RGB, lit: RGB, put) -> None:
+    r = random.Random(w * 31 + h * 7 + sum(map(ord, kind)))
+    if kind == "skyline":
+        x = 2
+        while x < w - 4:
+            bw, bh = r.randint(5, 9), int(h * r.uniform(0.22, 0.62))
+            _b_rect(put, x, base_y, bw, bh, col)
+            _b_windows(put, x, base_y, bw, bh, lit, x)
+            if r.random() < 0.4:
+                _b_rect(put, x + bw // 2, base_y + bh, 1, r.randint(3, 7), col)
+            x += bw + r.randint(0, 2)
+    elif kind == "clock":
+        cx = w // 2
+        _b_rect(put, cx - 6, base_y, 12, int(h * 0.55), col)
+        _b_tri(put, cx, base_y + int(h * 0.55), 8, int(h * 0.22), col)
+        for dx in range(-4, 5):
+            for dy in range(-4, 5):
+                if dx * dx + dy * dy <= 16:
+                    put(cx + dx, base_y + int(h * 0.42) + dy, lit if dx * dx + dy * dy > 6 else shade(lit, 0.5))
+        for sx in (w // 6, w - w // 6):
+            _b_rect(put, sx - 5, base_y, 10, int(h * 0.3), col)
+            _b_windows(put, sx - 5, base_y, 10, int(h * 0.3), lit, sx)
+    elif kind == "cathedral":
+        cx = w // 2
+        _b_rect(put, cx - 14, base_y, 28, int(h * 0.3), col)
+        _b_tri(put, cx, base_y + int(h * 0.3), 14, int(h * 0.14), col)
+        for sx in (cx - 18, cx + 18):
+            _b_rect(put, sx - 3, base_y, 6, int(h * 0.55), col)
+            _b_tri(put, sx, base_y + int(h * 0.55), 4, int(h * 0.2), col)
+        _b_dome(put, cx, base_y + 3, 6, int(h * 0.2), lit)
+    elif kind == "temple":
+        cx = w // 2
+        for i in range(6):
+            _b_rect(put, cx - 24 + i * 4, base_y + i * 4, 48 - i * 8, 4, col)
+        _b_rect(put, cx - 3, base_y + 24, 6, 5, lit)
+        for sx in (w // 7, w - w // 7):
+            for k in range(4):
+                _b_rect(put, sx + k * 4 - 8, base_y, 2, int(h * 0.3), col)
+    elif kind == "ruins":
+        x = 4
+        while x < w - 6:
+            bh = int(h * r.uniform(0.1, 0.45))
+            _b_rect(put, x, base_y, 3, bh, col)
+            if r.random() < 0.5:
+                _b_rect(put, x, base_y + bh, 9, 2, col)
+            x += r.randint(8, 14)
+    elif kind == "pyramids":
+        for cx, ph in ((w // 5, 0.45), (w // 2, 0.6), (w - w // 4, 0.35)):
+            _b_tri(put, cx, base_y, int(h * ph * 0.9), int(h * ph), col)
+            put(cx, base_y + int(h * ph), lit)
+    elif kind == "factory":
+        x = 3
+        while x < w - 8:
+            bw = r.randint(10, 16)
+            _b_rect(put, x, base_y, bw, int(h * 0.2), col)
+            for sx in range(x, x + bw - 3, 5):
+                _b_tri(put, sx + 2, base_y + int(h * 0.2), 2, 4, col)
+            if r.random() < 0.7:
+                _b_rect(put, x + bw - 3, base_y, 3, int(h * r.uniform(0.35, 0.6)), col)
+            _b_windows(put, x, base_y, bw, int(h * 0.2), lit, x)
+            x += bw + 2
+    elif kind == "castle":
+        _b_rect(put, 2, base_y, w - 4, int(h * 0.22), col)
+        for x in range(2, w - 4, 4):
+            _b_rect(put, x, base_y + int(h * 0.22), 2, 3, col)
+        for sx in (w // 8, w // 3, w - w // 3, w - w // 8):
+            _b_rect(put, sx - 4, base_y, 8, int(h * 0.5), col)
+            _b_tri(put, sx, base_y + int(h * 0.5), 5, int(h * 0.16), col)
+            _b_windows(put, sx - 4, base_y, 8, int(h * 0.5), lit, sx)
+    elif kind == "station":
+        cx = w // 2
+        _b_dome(put, cx, base_y, 16, int(h * 0.3), col)
+        _b_rect(put, cx - 30, base_y + int(h * 0.12), 60, 3, col)
+        for sx in (cx - 30, cx + 30):
+            _b_rect(put, sx - 1, base_y, 3, int(h * 0.4), col)
+            put(sx, base_y + int(h * 0.4), lit)
+        _b_windows(put, cx - 14, base_y, 28, int(h * 0.2), lit, 3)
+    elif kind == "pagoda":
+        for cx, sc in ((w // 4, 0.8), (w // 2, 1.0), (w - w // 4, 0.8)):
+            for tier in range(4):
+                tw = int((14 - tier * 3) * sc)
+                _b_rect(put, cx - tw // 2, base_y + tier * int(h * 0.1), tw, int(h * 0.07), col)
+                _b_rect(put, cx - tw // 2 - 2, base_y + tier * int(h * 0.1) + int(h * 0.07), tw + 4, 2, col)
+            _b_rect(put, cx, base_y + 4 * int(h * 0.1) + 2, 1, 5, col)
+
+
+BUILDING_STYLES = ("skyline", "clock", "cathedral", "temple", "ruins", "pyramids", "factory", "castle", "station", "pagoda")
+
+
 class Scenery:
     """Sky, distant ridges, stars and the shaded terrain layer (cached, patched per crater)."""
 
     def __init__(self, width: int, height: int, theme: Theme, rng: random.Random) -> None:
         self.w, self.h, self.theme = width, height, theme
         self.sky = self._build_sky(rng)
+        if theme.buildings:
+            col = mix(theme.sky_bottom, (0, 0, 0), 0.62)
+            lit = mix(theme.sun if hasattr(theme, "sun") else (255, 220, 140), (255, 230, 150), 0.5)
+
+            def put(x, y, c, sky=self.sky, hh=height, ww=width):
+                if 0 <= x < ww and 0 <= y < hh:
+                    sky[hh - 1 - y][x] = c
+            _bake_buildings(theme.buildings, width, height, int(height * 0.2), col, lit, put)
         self.rows = [r[:] for r in self.sky]
         self.stars = []
         for _ in range(int(width * height * theme.star_density * 3) + 8):
@@ -1387,6 +1579,7 @@ class TankDesign:
     glow: str = "none"          # animation of 'l' pixels: a key of GLOW_STYLES
     ambient: str = "none"       # particle flavour(s): keys of AMBIENT_KINDS joined with '+', e.g. "fire+smoke"
     accent: RGB = (236, 242, 250)
+    paint: Optional[RGB] = None  # intrinsic body colour: when set the design looks the same whatever hull colour is picked
     parts: tuple = ()           # (turret, hull, track) component ids when the mask was composed from components
     hover: float = 0.0          # >0: the tank floats this many pixels above the ground (shadow, bob and thruster are drawn)
 
@@ -1408,10 +1601,51 @@ _TRACKS = {
 }
 
 
-def _tank(key: str, name: str, blurb: str, parts: str, barrel: str, glow: str, ambient: str, accent: RGB) -> TankDesign:
-    """parts = 'turret/hull/track' names from the tables above."""
+_TURRETS.update({
+    "antenna": ("....t.t....", "..ttttttt.."), "mushroom": (".tttttttt..", "...ttttt..."), "stair": ("......ttt..", "..ttttttt.."),
+    "split": ("..tt...tt..", "..tt.t.tt.."), "pillbox": ("..ttttttt..", "..ttttttt.."), "ridge": ("...t.t.t...", ".ttttttttt."),
+    "helm": ("...ttttt...", ".tttlllttt."), "radar": ("..t.ttt.t..", "...ttttt..."), "fin": ("a.........a", ".attttttta."),
+    "orb": ("...ttttt...", "..tlllllt.."), "horns": ("t.........t", ".tt.ttt.tt."), "dish": (".t.......t.", "..ttttttt.."),
+    "sail": ("......t....", "..tttttt..."), "rear": ("..ttt......", "..tttttttt."), "bubble": ("....ttt....", "...ttttt..."),
+    "tower": ("...ttttt...", "...ttttt..."),
+    # premium vocabulary: crystal (p/q), furnace flame (f/e), void (v), storm (b), clockwork gold (y)
+    "crystal": ("....ppp....", "..pqpppqp.."), "shard": ("....q......", "..pppqppp.."), "furnace": ("a..f.f.f..a", "..tteeett.."),
+    "inferno": ("f.f.fff.f.f", ".ttteeettt."), "singularity": ("...vvvvv...", "..vvhvhvv.."), "tesla": ("b....b....b", ".tbttttttbt"),
+    "clock": ("...yyyyy...", "..yttyttyy."),
+})
+_HULLS.update({
+    "ramp": ("...hhhhhhgg", ".hhhhhhhhhh"), "wide": ("hhhhhhhhhhg", "hhhhhhhhhhh"), "hex": ("..hhhhhhhg.", ".hhhhhhhhhh"),
+    "ribbed": (".hhhhhhhhg.", "hdhdhdhdhdh"), "boat": ("hhhhhhhhhgg", ".hhhhhhhhh."), "bunker": ("hhhhhhhhhhg", "hddhhhhhddh"),
+    "lattice": (".hdhhdhhdhg", "hhdhhdhhdhh"), "keel": (".hhhhhhhhg.", "..hhhhhhh.."), "domehull": ("..hhhhhhhg.", "hhhhhhhhhhh"),
+    "saddle": ("hh.hhhhh.hg", "hhhhhhhhhhh"), "spined": ("ahahahahahg", "hhhhhhhhhhh"), "glowband": ("hhhhhhhhhhg", "hlllllllllh"),
+    "cradle": (".h.hhhhh.hg", "hhhhhhhhhhh"),
+    "crystal_h": ("..ppqpppp.g", ".ppppqpppp."), "forge_h": ("hheehheehhg", "heeeheeehhh"), "event_h": (".vvvhhhvvg.", "vvhvvvvhvvv"),
+    "storm_h": ("hhhbhhhbhhg", "hbhhhbhhhbh"), "chrono_h": ("hhyhhhhyhhg", "hyhhhhhhyhh"),
+})
+_TRACKS.update({
+    "tread": ("kkkkkkkkkkk", "kwkwkwkwkwk"), "stilts": (".k.......k.", "kk.......kk"), "skids": ("kk.......kk", ".kkkkkkkkk."),
+    "wheels": (".kk.kk.kk..", ".kk.kk.kk.."), "spiked": ("kdkdkdkdkdk", "kkkkkkkkkkk"), "pods": ("..kk...kk..", ".kkkk.kkkk."),
+    "lowtread": (".kkkkkkkkk.", "kwkwkwkwkwk"), "hoverpad": ("..k.....k..", ".kkk...kkk."),
+    "crystal_t": ("..pq...qp..", ".pppqpqppp."), "ember_t": ("kekekekekek", "kkkkkkkkkkk"), "void_t": ("..vv...vv..", ".vvvv.vvvv."),
+    "arc_t": ("kbkwkwkbkwk", "kkkkkkkkkkk"), "gold_t": ("kykwkwkwkyk", "kkkkkkkkkkk"),
+})
+assert all(len(r) == 11 for part in (_TURRETS, _HULLS, _TRACKS) for rows in part.values() for r in rows) \
+    and all(len(rows) == 2 for part in (_TURRETS, _HULLS, _TRACKS) for rows in part.values())
+# Premium components are only offered by the workshop once a tank that uses them is owned (see workshop_components()).
+PREMIUM_PARTS = frozenset({"crystal", "shard", "furnace", "inferno", "singularity", "tesla", "clock", "crystal_h", "forge_h", "event_h",
+                           "storm_h", "chrono_h", "crystal_t", "ember_t", "void_t", "arc_t", "gold_t"})
+
+
+def _tank(key: str, name: str, blurb: str, parts: str, barrel: str, glow: str, ambient: str, accent: RGB,
+          paint: Optional[RGB] = None, hover: float = 0.0) -> TankDesign:
+    """parts = 'turret/hull/track' component ids from the tables above."""
     t, h, k = parts.split("/")
-    return TankDesign(key, name, blurb, _TURRETS[t] + _HULLS[h] + _TRACKS[k], barrel=barrel, glow=glow, ambient=ambient, accent=accent)
+    return TankDesign(key, name, blurb, _TURRETS[t] + _HULLS[h] + _TRACKS[k], barrel=barrel, glow=glow, ambient=ambient,
+                      accent=accent, parts=(t, h, k), paint=paint, hover=hover)
+
+
+def _tanks(rows: list) -> tuple:
+    return tuple(_tank(*r[:8], **(r[8] if len(r) > 8 else {})) for r in rows)
 
 
 DESIGNS: tuple[TankDesign, ...] = (
@@ -1480,8 +1714,8 @@ SECRET_DESIGNS: tuple[TankDesign, ...] = (
                barrel="single", glow="matrix", ambient="bits", accent=(80, 255, 120)),
 )
 # Shop kits: bought with coins (and credits at the top tier). 5 cheap, 5 mid, 5 pro, 3 sovereign-level.
-SHOP_DESIGNS: tuple[TankDesign, ...] = (
-    _tank("scout", "SCOUT", "Light wedge built for quick shots.", "needle/wedge/std", "single", "none", "none", (200, 225, 240)),
+_SHOP_BASE_DESIGNS: tuple[TankDesign, ...] = (
+    _tank("scout", "SCOUT", "Light wedge built for quick shots.", "needle/wedge/tread", "single", "none", "none", (200, 225, 240)),
     _tank("mule", "MULE", "Stubby, stubborn workhorse.", "box/plain/full", "single", "none", "none", (230, 200, 140)),
     _tank("badger", "BADGER", "Low-slung and hard to shift.", "dome/stripe/round", "single", "none", "none", (210, 170, 120)),
     _tank("turtle", "TURTLE", "Domed shell on tiny wheels.", "dome/plain/round", "single", "none", "none", (150, 220, 150)),
@@ -1511,12 +1745,87 @@ MISSION_DESIGNS: tuple[TankDesign, ...] = (
     _tank("hydra", "HYDRA", "Many-headed plasma tank trailing mist.", "twin/jewel/heavy", "triple", "plasma", "mist", (120, 255, 150)),
     TankDesign("ufo", "U.F.O.", "An alien saucer on hover pods. The Grand Prize.",
                ("....lll....", "...tllllt..", ".hhhhhhhhg.", "hahahahahah", ".kk.kkk.kk.", "..k.....k.."),
-               barrel="single", glow="plasma", ambient="mist", accent=(120, 255, 170)),
+               barrel="single", glow="plasma", ambient="mist", accent=(120, 255, 170), hover=3.0),
 )
-ALL_DESIGNS = DESIGNS + SHOP_DESIGNS + MISSION_DESIGNS + SECRET_DESIGNS
+_N = lambda *r: r
+_NEW_TANKS = (
+    _tanks([  # cheap
+        _N("pebble", "PEBBLE", "A smooth little river-stone of a tank.", "dome/ribbed/tread", "single", "none", "none", (190, 200, 205)),
+        _N("rusty", "RUSTY", "Patched bunker on low treads.", "pillbox/bunker/lowtread", "howitzer", "none", "none", (200, 140, 90)),
+        _N("hopper", "HOPPER", "Spindly antenna tank on wheels.", "antenna/boat/wheels", "single", "none", "none", (170, 220, 170)),
+        _N("spud", "SPUD", "Round, wide and unbothered.", "bubble/wide/full", "single", "none", "none", (220, 200, 140)),
+        _N("crate", "CRATE", "A box on pods. It works.", "pillbox/slab/pods", "single", "none", "none", (190, 170, 130)),
+        _N("skiff", "SKIFF", "Sail-turret skimmer on skids.", "sail/keel/skids", "needle", "none", "none", (150, 200, 235)),
+        _N("grunt", "GRUNT", "Rear-set gun on a ramped hull.", "rear/ramp/std", "howitzer", "none", "none", (160, 190, 140)),
+        _N("tinker", "TINKER", "Radar-topped hex hull on spiked treads.", "radar/hex/spiked", "single", "none", "none", (210, 190, 120)),
+        _N("drifter", "DRIFTER", "Mushroom cap over a saddle hull.", "mushroom/saddle/round", "single", "none", "none", (200, 170, 210)),
+        _N("bucket", "BUCKET", "Bulbous cradle with a double barrel.", "bubble/cradle/heavy", "double", "none", "none", (180, 190, 200))]),
+    _tanks([  # mid
+        _N("stingray", "STINGRAY", "Dish-crowned keel gliding on pods.", "dish/keel/pods", "sniper", "scan", "bubbles", (100, 200, 230)),
+        _N("marauder", "MARAUDER", "Horned hex hull bristling with barrels.", "horns/hex/spiked", "quad", "blink", "sparks", (235, 150, 90)),
+        _N("harpoon", "HARPOON", "Helmeted lowtread with a very long gun.", "helm/glowband/lowtread", "sniper", "scan", "none", (120, 230, 200)),
+        _N("trident", "TRIDENT", "A three-pronged gun on a bunker.", "split/bunker/tread", "triple", "pulse", "none", (110, 210, 230)),
+        _N("redoubt", "REDOUBT", "A tower on a ribbed fortress hull.", "tower/ribbed/heavy", "howitzer", "pulse", "none", (210, 200, 170)),
+        _N("sandstorm", "SANDSTORM", "Gritty ridge-top hull shedding dust.", "ridge/ramp/spiked", "gatling", "none", "embers", (230, 190, 110)),
+        _N("cobra", "COBRA", "A hooded orb striking from a keel.", "orb/keel/hoverpad", "coil", "toxic", "mist", (140, 240, 110)),
+        _N("barracuda", "BARRACUDA", "Finned predator with a needle gun.", "fin/boat/skids", "needle", "ice", "frost", (150, 220, 255)),
+        _N("outrider", "OUTRIDER", "Radar scout on long stilts.", "radar/domehull/stilts", "sniper", "neon", "none", (240, 110, 220)),
+        _N("brigadier", "BRIGADIER", "Stair-stepped command tank in gold.", "stair/lattice/lowtread", "heavy", "gold", "none", (235, 215, 130))]),
+    _tanks([  # pro
+        _N("typhoon", "TYPHOON", "A storm-cell turret on a glowing band.", "antenna/glowband/hoverpad", "bolt", "storm", "static", (130, 190, 255)),
+        _N("hellcat", "HELLCAT", "Horned, ember-plated predator.", "horns/armor/spiked", "flame", "ember", "embers", (255, 110, 60)),
+        _N("warmaster", "WARMASTER", "A quad-barrel siege lord.", "helm/bunker/heavy", "quad", "pulse", "sparks", (220, 190, 120)),
+        _N("gravedigger", "GRAVEDIGGER", "Black spined hull, void-lit.", "ridge/spined/stilts", "void", "void", "void", (150, 100, 230)),
+        _N("shatterer", "SHATTERER", "Crystal-cold hull crowned with ice.", "fin/hex/pods", "needle", "ice", "frost", (190, 235, 255)),
+        _N("stormrider", "STORMRIDER", "A wide-bodied cannon on skids, crackling.", "radar/wide/skids", "gatling", "storm", "lightning", (110, 200, 255)),
+        _N("ironclad", "IRONCLAD", "A tower of armour with a gold heart.", "tower/armor/heavy", "howitzer", "gold", "none", (200, 200, 215)),
+        _N("bloodhound", "BLOODHOUND", "A fast red hunter trailing embers.", "rear/ramp/hoverpad", "sniper", "ember", "embers", (230, 70, 70)),
+        _N("sandshark", "SANDSHARK", "A finned burrower with a toxic glow.", "fin/keel/spiked", "coil", "toxic", "petals", (220, 190, 100)),
+        _N("tempestor", "TEMPESTOR", "An orb-topped war engine in neon.", "orb/lattice/heavy", "bolt", "neon", "orbit", (255, 90, 220))]),
+    _tanks([  # master tier
+        _N("ascendant", "ASCENDANT", "A rising gold spire over a glowing band.", "helm/glowband/hoverpad", "crystal", "gold", "orbit", (255, 225, 130)),
+        _N("seraphim", "SERAPHIM", "A winged, haloed hull, bright and ethereal.", "fin/domehull/pods", "bolt", "refract", "sparkle", (255, 250, 200)),
+        _N("doombringer", "DOOMBRINGER", "A spiked dread on burning treads.", "horns/armor/lowtread", "flame", "ember", "burn", (255, 80, 50)),
+        _N("starforge", "STARFORGE", "A star-crowned forge of living gold.", "orb/royal/heavy", "coil", "gold", "sparkle+flare", (255, 200, 100)),
+        _N("arcanist", "ARCANIST", "A mystic hull orbited by motes.", "coil/jewel/hoverpad", "void", "neon", "orbit", (200, 120, 255)),
+        _N("voidwalker", "VOIDWALKER", "A black glass stalker leaking dark.", "ridge/lattice/stilts", "void", "void", "void+smoke", (160, 110, 240)),
+        _N("sunbreaker", "SUNBREAKER", "A radiant dome of solar plasma.", "crown/glowband/heavy", "flame", "plasma", "fire+flare", (255, 190, 70)),
+        _N("templar", "TEMPLAR", "A gilded tower-fortress with a halo.", "tower/royal/heavy", "heavy", "gold", "sparkle+orbit", (255, 235, 150)),
+        _N("monolith", "MONOLITH", "A slab of glowing stone and static.", "pillbox/slab/heavy", "howitzer", "storm", "static+orbit", (180, 200, 230)),
+        _N("phoenix", "PHOENIX", "A bird of fire on a gilded frame.", "fin/jewel/hoverpad", "flame", "ember", "fire+embers", (255, 160, 50))]),
+)
+# The premium tier: intrinsic designs built from the premium component set (crystal, furnace, void, storm, clockwork).
+_PREMIUM_TANKS = _tanks([
+    _N("prismatic_king", "PRISMATIC KING", "Grown from a single crystal: every facet splits the light.", "crystal/crystal_h/crystal_t", "crystal",
+       "refract", "prism+sparkle", (255, 255, 255), {"paint": (206, 220, 246)}),
+    _N("eviscerator", "EVISCERATOR", "Furnace-hearted and permanently ablaze, smoke pouring off white-hot armour.", "inferno/forge_h/ember_t",
+       "flame", "ember", "burn", (255, 150, 40), {"paint": (205, 26, 26)}),
+    _N("singularity", "SINGULARITY", "A collapsed star in tank form; light bends around the hull.", "singularity/event_h/void_t", "void", "void",
+       "void+orbit", (170, 110, 255), {"paint": (34, 22, 70), "hover": 3.0}),
+    _N("stormbringer", "STORMBRINGER", "Tesla spires and arc-wreathed tracks.", "tesla/storm_h/arc_t", "bolt", "storm", "lightning+static",
+       (160, 220, 255), {"paint": (52, 72, 128)}),
+    _N("chronos", "CHRONOS", "A clockwork of gold that never stops turning.", "clock/chrono_h/gold_t", "coil", "gold", "orbit+sparkle",
+       (255, 230, 140), {"paint": (150, 112, 40)}),
+])
+SHOP_DESIGNS: tuple[TankDesign, ...] = (_SHOP_BASE_DESIGNS[0:5] + _NEW_TANKS[0] + _SHOP_BASE_DESIGNS[5:10] + _NEW_TANKS[1]
+                                        + _SHOP_BASE_DESIGNS[10:15] + _NEW_TANKS[2] + _SHOP_BASE_DESIGNS[15:20] + _NEW_TANKS[3] + _PREMIUM_TANKS)
+# Terminal Ticket bosses: ten unique premium-class tanks (intrinsic paint), reward-only.
+TICKET_DESIGNS: tuple[TankDesign, ...] = _tanks([
+    _N("voltsovereign", "VOLT SOVEREIGN", "A throne of arcing coils.", "tesla/glowband/hoverpad", "bolt", "storm", "lightning+static", (150, 210, 255), {"paint": (40, 60, 150)}),
+    _N("magistrate", "IRON MAGISTRATE", "A clockwork judge in grey iron and gold.", "clock/ribbed/lowtread", "coil", "gold", "orbit+sparkle", (255, 220, 120), {"paint": (110, 104, 96)}),
+    _N("regent", "GLACIER REGENT", "A frozen spire-tank breathing frost.", "shard/hex/pods", "needle", "ice", "frost+orbit", (200, 240, 255), {"paint": (170, 215, 245)}),
+    _N("solarch", "SOLAR ARCHON", "A blazing gold tower-tank.", "tower/royal/spiked", "flame", "gold", "fire+flare+sparkle", (255, 220, 100), {"paint": (230, 170, 50)}),
+    _N("abyssal", "ABYSS LEVIATHAN", "A deep-sea horror leaking bubbles and dark.", "wide/hex/hoverpad", "howitzer", "void", "bubbles+void", (100, 200, 255), {"paint": (20, 70, 110), "hover": 2.0}),
+    _N("pharaoh", "SAND PHARAOH", "A gilded sun-priest on silent skids.", "dish/spined/skids", "sniper", "gold", "sparkle+embers", (255, 230, 150), {"paint": (205, 170, 70)}),
+    _N("baron", "TOXIC BARON", "A noxious war-machine venting green smoke.", "stair/ribbed/lowtread", "quad", "toxic", "smoke+mist", (170, 255, 90), {"paint": (80, 130, 40)}),
+    _N("shadowlord", "SHADOW EMPEROR", "A horned silhouette swallowing the light.", "horns/lattice/stilts", "void", "void", "void+smoke", (170, 120, 255), {"paint": (30, 24, 46)}),
+    _N("overseer", "COSMIC OVERSEER", "A watching orb on a hovering throne.", "orb/jewel/hoverpad", "crystal", "refract", "orbit+prism", (200, 190, 255), {"paint": (60, 60, 140), "hover": 3.0}),
+    _N("warlord", "DRAGON WARLORD", "A scaled, fire-breathing conqueror.", "furnace/slab/spiked", "flame", "ember", "fire+smoke", (255, 160, 60), {"paint": (170, 40, 30)}),
+])
+ALL_DESIGNS = DESIGNS + SHOP_DESIGNS + MISSION_DESIGNS + TICKET_DESIGNS + SECRET_DESIGNS
 assert all(len(d.mask) == TANK_H and all(len(r) == TANK_W for r in d.mask) for d in ALL_DESIGNS)
 assert len(DESIGNS) == 25 and DESIGNS[-1].key == "sovereign"          # 5 starters + 20 Tournament unlocks
-assert len({d.key for d in ALL_DESIGNS}) == len(ALL_DESIGNS) and len(SHOP_DESIGNS) == 20
+assert len({d.key for d in ALL_DESIGNS}) == len(ALL_DESIGNS) and len(SHOP_DESIGNS) == 65
 DESIGN_BY_KEY = {d.key: d for d in ALL_DESIGNS}
 DEFAULT_DESIGN = DESIGNS[0]
 BASE_KITS = 5     # the first five designs / ammo types are available from the start
@@ -1567,7 +1876,7 @@ AMMOS: tuple[AmmoType, ...] = (          # first five: starters; then one per To
 SECRET_AMMOS: tuple[AmmoType, ...] = (
     AmmoType("glyph", "GLYPH", "Cycling ASCII character, raining code.", "glyph", "code", "code"),
 )
-SHOP_AMMOS: tuple[AmmoType, ...] = (
+_SHOP_BASE_AMMOS: tuple[AmmoType, ...] = (
     AmmoType("blazer", "BLAZER", "A plain comet with a clean blast.", "comet", "plain", "classic"),
     AmmoType("dasher", "DASHER", "Dashed streak, clustered bursts.", "streak", "dash", "cluster"),
     AmmoType("fizz", "FIZZ", "Fizzing spark, twinkling wake.", "spark", "twinkle", "rays"),
@@ -1597,8 +1906,81 @@ MISSION_AMMOS: tuple[AmmoType, ...] = (
     AmmoType("oblivion", "OBLIVION", "A prismatic void that implodes.", "void", "prism", "implode"),
     AmmoType("xenon", "XENON", "Pulsing alien plasma that blooms in rings. The Grand Prize.", "alien", "alien", "alien"),
 )
-ALL_AMMOS = AMMOS + SHOP_AMMOS + MISSION_AMMOS + SECRET_AMMOS
-assert len(AMMOS) == 25 and AMMOS[-1].key == "aurora" and len(SHOP_AMMOS) == 20
+def _ammos(rows: list) -> tuple:
+    return tuple(AmmoType(k, n, b, p, t, bm, tuple(m)) for k, n, b, p, t, bm, m in rows)
+
+
+_A = lambda *r: r
+_NEW_AMMOS = (
+    _ammos([  # cheap: one clear quirk each
+        _A("lob", "LOB", "Slow, floaty lob: wide blast, loves a tailwind.", "orb", "glow", "ring", (("g", 0.7), ("wind", 1.4), ("radius", 1.1))),
+        _A("slug", "SLUG", "Flat, fast, wind-proof slug with a small blast.", "streak", "dash", "classic", (("g", 1.45), ("wind", 0.4), ("speed", 1.1), ("radius", 0.85))),
+        _A("skipper", "SKIPPER", "Skips once off the ground before it blows.", "shell", "plain", "classic", (("bounce", 1), ("br", 0.5), ("radius", 0.9))),
+        _A("twister", "TWISTER", "Corkscrews through the air.", "spark", "twinkle", "rays", (("wob", (3.0, 8.0)), ("radius", 0.95))),
+        _A("pebbles", "PEBBLES", "A small blast, then three bomblets.", "shell", "sparks", "cluster", (("cluster", 3), ("cspace", 4.5), ("cr", 0.5), ("radius", 0.6))),
+        _A("dud", "DUD", "A tiny pop... then the real blast.", "comet", "plain", "embers", (("fuse", 0.8), ("fr", 1.35), ("radius", 0.5))),
+        _A("mudball", "MUDBALL", "Builds a mound of earth instead of digging.", "drip", "drip", "cloud", (("terrain", "mound"), ("dmg", 0), ("radius", 1.1))),
+        _A("borer", "BORER", "Drills a narrow, deep shaft.", "streak", "sparks", "shatter", (("terrain", "trench"), ("radius", 0.9))),
+        _A("scatter", "SCATTER", "Splits in two at the top of its arc.", "star", "twinkle", "starrays", (("apex", ("split", 2, 0.5)), ("subr", 0.85))),
+        _A("breeze", "BREEZE", "Ignores the wind completely.", "ring", "ripple", "ring", (("wind", 0.0), ("radius", 0.95)))]),
+    _ammos([  # mid
+        _A("zigzag", "ZIGZAG", "A wild zigzag that is hard to read.", "spark", "arc", "thunder", (("wob", (6.0, 12.0)), ("radius", 1.0))),
+        _A("triskip", "TRI-SKIP", "Three skips, three chances.", "shell", "dash", "shock", (("bounce", 3), ("br", 0.4), ("radius", 0.9))),
+        _A("rainmaker", "RAINMAKER", "Rains four shells from the apex.", "drip", "mist", "cloud", (("apex", ("split", 4, 0.7)), ("subr", 0.6))),
+        _A("fireworks", "FIREWORKS", "Bursts into six at the top of the arc.", "star", "twinkle", "starrays", (("apex", ("split", 6, 1.0)), ("subr", 0.5))),
+        _A("walker", "WALKER", "A line of blasts marching forward.", "lava", "lava", "magma", (("chain", 4), ("cstep", 7.0), ("cr", 0.6), ("radius", 0.7))),
+        _A("timecharge", "TIME CHARGE", "Small pop, then a delayed big blast.", "comet", "solar", "nova", (("fuse", 1.2), ("fr", 1.8), ("radius", 0.45))),
+        _A("rockslide", "ROCKSLIDE", "Bomblets spread across the ground.", "shell", "embers", "cluster", (("cluster", 5), ("cspace", 6.0), ("cr", 0.6), ("radius", 0.7))),
+        _A("fortify", "FORTIFY", "Raises a defensive hill, harms nobody.", "orb", "glow", "ring", (("terrain", "mound"), ("dmg", 0), ("radius", 1.3))),
+        _A("tunneler", "TUNNELER", "Digs a deep trench.", "streak", "frost", "shatter", (("terrain", "trench"), ("radius", 1.2))),
+        _A("glasser", "GLASSER", "Melts the ground perfectly flat.", "sun", "solar", "nova", (("terrain", "glass"), ("radius", 1.0)))]),
+    _ammos([  # pro
+        _A("warpshell", "WARP SHELL", "Teleports forward at the top of its arc.", "void", "mist", "implode", (("apex", ("jump", 28.0)),)),
+        _A("gravmine", "GRAV MINE", "Pulls nearby tanks toward the blast.", "void", "mist", "implode", (("pull", 7.0), ("radius", 1.1))),
+        _A("hailfall", "HAILFALL", "Eight shards fall from above.", "shard", "frost", "shatter", (("apex", ("split", 8, 1.2)), ("subr", 0.5))),
+        _A("ricochet", "RICOCHET", "Four ricochets before the finale.", "bolt", "arc", "thunder", (("bounce", 4), ("br", 0.5), ("radius", 1.0))),
+        _A("tremor", "TREMOR", "A ground-shaking line of blasts.", "lava", "embers", "magma", (("chain", 6), ("cstep", 6.5), ("cr", 0.65), ("radius", 0.8))),
+        _A("detonator", "DETONATOR", "Bomblets, then a delayed blast.", "comet", "sparks", "cluster", (("cluster", 7), ("cspace", 4.0), ("cr", 0.5), ("fuse", 0.9), ("fr", 1.5), ("radius", 0.7))),
+        _A("colossus", "COLOSSUS", "A huge, heavy, slow shell.", "shell", "embers", "fire", (("radius", 1.9), ("g", 1.25), ("speed", 0.9))),
+        _A("phantomorb", "PHANTOM ORB", "A wind-proof orb that wanders.", "orb", "mist", "implode", (("wob", (7.0, 7.0)), ("wind", 0.0), ("radius", 1.2))),
+        _A("meteor", "METEOR", "Plunges steeply and hits hard.", "sun", "fire", "fire", (("g", 1.8), ("speed", 1.15), ("radius", 1.5))),
+        _A("sunder", "SUNDER", "A wide blast that hurts every tank in reach.", "prism", "prism", "prism", (("multi", 1), ("radius", 1.7)))]),
+    _ammos([  # master
+        _A("vortex", "VORTEX", "Drags tanks in, then detonates.", "void", "mist", "implode", (("pull", 10.0), ("radius", 1.6), ("fuse", 0.7), ("fr", 2.2))),
+        _A("skyfall", "SKYFALL", "Ten shells rain from the apex.", "star", "twinkle", "starrays", (("apex", ("split", 10, 1.3)), ("subr", 0.55))),
+        _A("wormhole", "WORMHOLE", "Warps far ahead and lands as a cluster.", "ring", "ripple", "cluster", (("apex", ("jump", 45.0)), ("cluster", 3), ("cr", 0.6))),
+        _A("chainreact", "CHAIN REACTION", "A long chain of blasts.", "bolt", "arc", "thunder", (("chain", 8), ("cstep", 6.0), ("cr", 0.7))),
+        _A("faultline", "FAULT LINE", "Splits the ground open and runs on.", "lava", "lava", "magma", (("terrain", "trench"), ("radius", 1.6), ("chain", 5), ("cstep", 8.0), ("cr", 0.6))),
+        _A("mirrorshot", "MIRROR", "Bounces five times.", "prism", "prism", "prism", (("bounce", 5), ("br", 0.6), ("radius", 1.2))),
+        _A("overkill", "OVERKILL", "An enormous multi-target blast.", "sun", "solar", "nova", (("radius", 2.1), ("multi", 1), ("g", 1.1))),
+        _A("cataclysm", "CATACLYSM", "Bomblets, then a world-ending blast.", "flame", "fire", "fire", (("fuse", 1.5), ("fr", 2.6), ("cluster", 4), ("radius", 0.8))),
+        _A("prismrain", "PRISM RAIN", "Seven prismatic shells from above.", "prism", "prism", "prism", (("apex", ("split", 7, 0.9)), ("subr", 0.75))),
+        _A("maelstrom", "MAELSTROM", "A swirling storm that drags tanks about.", "helix", "prism", "bloom", (("wob", (9.0, 6.0)), ("pull", 6.0), ("radius", 1.4)))]),
+)
+# Premium: each of these is a different algorithm, not a bigger number.
+_PREMIUM_AMMOS = _ammos([
+    _A("eventhorizon", "EVENT HORIZON", "Drags everything in, then collapses.", "void", "mist", "implode", (("pull", 14.0), ("radius", 2.0), ("fuse", 1.0), ("fr", 2.6), ("multi", 1))),
+    _A("phaseshift", "PHASE SHIFT", "Blinks across the field and carpet-bombs.", "alien", "alien", "alien", (("apex", ("jump", 60.0)), ("cluster", 5), ("cspace", 5.0), ("cr", 0.6))),
+    _A("armageddon", "ARMAGEDDON", "Twelve shells from the sky.", "sun", "fire", "nova", (("apex", ("split", 12, 1.6)), ("subr", 0.7))),
+    _A("tectonic", "TECTONIC FURY", "A fissure that races across the land.", "lava", "lava", "magma", (("terrain", "trench"), ("radius", 1.8), ("chain", 10), ("cstep", 9.0), ("cr", 0.75))),
+    _A("quantumecho", "QUANTUM ECHO", "Six impossible bounces, then a cluster.", "helix", "prism", "bloom", (("bounce", 6), ("br", 0.6), ("radius", 1.0), ("cluster", 4))),
+])
+SHOP_AMMOS: tuple[AmmoType, ...] = (_SHOP_BASE_AMMOS[0:5] + _NEW_AMMOS[0] + _SHOP_BASE_AMMOS[5:10] + _NEW_AMMOS[1]
+                                    + _SHOP_BASE_AMMOS[10:15] + _NEW_AMMOS[2] + _SHOP_BASE_AMMOS[15:20] + _NEW_AMMOS[3] + _PREMIUM_AMMOS)
+TICKET_AMMOS: tuple[AmmoType, ...] = _ammos([
+    _A("arcstorm", "ARC STORM", "A chain of lightning blasts.", "bolt", "arc", "thunder", (("chain", 6), ("cstep", 7.0), ("cr", 0.65), ("radius", 0.9))),
+    _A("gavel", "GAVEL", "A small tap... then the verdict.", "comet", "solar", "nova", (("fuse", 1.0), ("fr", 2.0), ("radius", 0.6))),
+    _A("coldfront", "COLD FRONT", "Six shards fall from the sky.", "shard", "frost", "shatter", (("apex", ("split", 6, 0.8)), ("subr", 0.65))),
+    _A("sunburst", "SUNBURST", "A wide solar blast with bomblets.", "sun", "solar", "nova", (("radius", 1.5), ("multi", 1), ("cluster", 4), ("cr", 0.55))),
+    _A("undertow", "UNDERTOW", "Drags tanks toward the blast.", "void", "mist", "implode", (("pull", 9.0), ("radius", 1.4))),
+    _A("duneshot", "DUNE SHOT", "Skips across the sand, then scatters.", "shell", "embers", "cluster", (("bounce", 3), ("br", 0.45), ("cluster", 3))),
+    _A("plague", "PLAGUE", "Spreading bomblets, then a cloud.", "drip", "mist", "cloud", (("cluster", 6), ("cr", 0.6), ("fuse", 0.9), ("fr", 1.6), ("radius", 0.6))),
+    _A("umbra", "UMBRA", "Splits in the dark, then collapses.", "void", "mist", "implode", (("apex", ("split", 5, 0.8)), ("subr", 0.7), ("fuse", 0.8))),
+    _A("starshower", "STARSHOWER", "Nine stars rain from the apex.", "star", "twinkle", "starrays", (("apex", ("split", 9, 1.1)), ("subr", 0.6))),
+    _A("dragonfire", "DRAGONFIRE", "A river of flame along the ground.", "flame", "fire", "fire", (("chain", 5), ("cstep", 8.0), ("cr", 0.7), ("radius", 1.2))),
+])
+ALL_AMMOS = AMMOS + SHOP_AMMOS + MISSION_AMMOS + TICKET_AMMOS + SECRET_AMMOS
+assert len(AMMOS) == 25 and AMMOS[-1].key == "aurora" and len(SHOP_AMMOS) == 65
 assert len({a.key for a in ALL_AMMOS}) == len(ALL_AMMOS)
 AMMO_BY_KEY = {a.key: a for a in ALL_AMMOS}
 DEFAULT_AMMO = AMMOS[0]
@@ -1634,6 +2016,8 @@ class Tank:
     shield: int = 0              # hits the shield still absorbs
     volley: int = 0              # extra shots left in the current turn
     turns: int = 0               # turns taken (drives UFO behaviour)
+    charge: int = 0              # special attack: forfeited turns banked (2 = ready)
+    guard: bool = False          # shielded for as long as another tank on its team is alive (the Mothership)
     vis_dx: float = 0.0          # visual-only offset that eases a teleporting UFO into place
     phase: int = 0               # UFO damage phases already triggered
 
@@ -1842,7 +2226,9 @@ def draw_tank(canvas: PixelCanvas, x: float, y: float, facing: int, angle: float
     """Draws a tank whose base is at (x, y). `lift` is extra height added here (None = the design's own hover, which is
     what previews want; battles pass 0 because the simulated tank already floats). `hover` is how far the body is
     above the ground, used for the shadow and thruster (None = same as lift)."""
-    if body == RAINBOW:
+    if design.paint is not None:
+        body = design.paint
+    elif body == RAINBOW:
         body = rainbow(t)
     lift = design.hover if lift is None else lift
     air = lift if hover is None else hover
@@ -2826,14 +3212,14 @@ class BattleWorld:
             frac = mapdef.spawns[0] + k * gap if team == 0 else mapdef.spawns[1] - k * gap
             half = int(TANK_W * pl.scale / 2)
             x = int(clamp((frac + jitter) * width, 9 + half, width - 10 - half))
-            self.terrain.flatten(x + 0.5)
+            self.terrain.flatten(x + 0.5, 10)
             hover = pl.hover or DESIGN_BY_KEY[pl.design].hover
             self.tanks.append(Tank(i, pl.name, pl.label, pl.tank_color, pl.shot_color, pl.is_ai, x + 0.5,
                                    float(self.terrain.support_height(x)) + hover, 1 if team == 0 else -1,
                                    50.0 if team == 0 else 130.0,
                                    hp=pl.hp, max_hp=pl.hp, rgb_hull=pl.tank_color == RAINBOW, rgb_shot=pl.shot_color == RAINBOW,
                                    design=DESIGN_BY_KEY[pl.design], ammo=AMMO_BY_KEY[pl.ammo], team=team, owner=pl.owner,
-                                   kind=pl.kind, scale=pl.scale, hover=hover, shield=pl.shield))
+                                   kind=pl.kind, scale=pl.scale, hover=hover, shield=pl.shield, guard=pl.guard))
         self.scenery = Scenery(width, height, mapdef.theme, self.rng)
         self.scenery.apply_terrain(self.terrain)
         self.particles = ParticleSystem()
@@ -3422,6 +3808,14 @@ class HomeTheme:
     stars: bool = True
     aurora: bool = False
     corona: bool = False
+    layers: tuple = ()      # scenery layers drawn by ThemeBackdrop: see LAYER_DRAWERS (moon, sun, city, mountains, grid, ...)
+
+
+def _hx(key: str, name: str, blurb: str, sky4: tuple, far: RGB, ground: RGB, accent: RGB, fx: str, hero: str, ammo: str,
+        layers: tuple, stars: bool = True, aurora: bool = False, corona: bool = False) -> HomeTheme:
+    """Compact HomeTheme: derives the ground-top colour and the logo gradient from the accent."""
+    return HomeTheme(key, name, blurb, tuple(zip((0, 0.28, 0.62, 1), sky4)), far, ground, mix(ground, accent, 0.55), accent,
+                     mix(accent, (255, 255, 255), 0.65), accent, fx, hero, ammo, stars, aurora, corona, layers)
 
 
 def _ht(key: str, name: str, blurb: str, sky4: tuple, far: RGB, ground: RGB, top: RGB, accent: RGB, la: RGB, lb: RGB, fx: str,
@@ -3481,6 +3875,58 @@ HOME_THEMES: dict[str, HomeTheme] = {t.key: t for t in (
     _ht("CELESTIAL", "CELESTIAL GATE", "A gate of light beyond the clouds.", ((255, 230, 255), (220, 150, 255), (90, 50, 160), (8, 4, 36)),
         (70, 40, 130), (24, 14, 52), (240, 200, 255), (250, 200, 255), (255, 245, 255), (230, 140, 255), "fireflies", "overlord", "bloom",
         True, True, True),
+    # --- new shop screens: each pairs a palette with scenery LAYERS so they differ in structure, not just colour ---------
+    _hx("DAWN", "FIRST LIGHT", "A low sun over blue mountains.", ((255, 220, 160), (250, 160, 150), (110, 110, 170), (20, 24, 64)), (70, 80, 130), (28, 34, 60), (255, 190, 130), "", "scout", "slug", ("sun", "mountains")),
+    _hx("PRAIRIE", "OPEN PRAIRIE", "Pine ridge and a warm evening sun.", ((255, 230, 170), (255, 180, 110), (130, 90, 120), (24, 20, 52)), (60, 70, 70), (26, 34, 30), (255, 200, 120), "fireflies", "mule", "lob", ("sun", "trees")),
+    _hx("HARVEST", "HARVEST MOON", "A huge orange moon over dark pines.", ((255, 190, 100), (190, 100, 70), (70, 36, 60), (10, 8, 28)), (50, 30, 44), (20, 14, 22), (255, 160, 70), "ash", "badger", "dud", ("moon", "trees")),
+    _hx("LAKESIDE", "QUIET LAKESIDE", "Still water below a mountain range.", ((190, 225, 255), (120, 170, 220), (50, 90, 150), (8, 16, 44)), (50, 80, 120), (18, 34, 60), (140, 200, 255), "", "turtle", "breeze", ("mountains", "ocean")),
+    _hx("CAMPFIRE", "CAMPFIRE NIGHT", "Embers rising into a starry dark.", ((60, 50, 90), (40, 30, 70), (20, 16, 44), (4, 4, 18)), (24, 20, 40), (12, 10, 22), (255, 150, 60), "embers", "pioneer", "pebbles", ("trees", "moon")),
+    _hx("TWILIGHT", "TWILIGHT TOWN", "A small town as the lights come on.", ((255, 170, 150), (190, 110, 150), (80, 60, 130), (12, 12, 44)), (50, 40, 80), (20, 18, 40), (255, 180, 160), "", "pebble", "skipper", ("moon", "city")),
+    _hx("FOGBANK", "FOGBANK", "Rain through grey mist.", ((170, 180, 190), (120, 130, 150), (60, 70, 96), (14, 18, 32)), (70, 80, 100), (30, 36, 50), (190, 210, 230), "", "rusty", "twister", ("rain", "mountains"), False),
+    _hx("SPRING", "SPRING MEADOW", "Green hills and a pale sun.", ((235, 250, 220), (170, 220, 190), (80, 150, 170), (20, 50, 90)), (60, 110, 90), (24, 52, 40), (170, 240, 150), "fireflies", "hopper", "borer", ("sun", "trees")),
+    _hx("MARKET", "NIGHT MARKET", "Glowing windows in a crowded old town.", ((255, 200, 120), (180, 110, 110), (70, 50, 100), (10, 8, 32)), (60, 40, 70), (24, 18, 34), (255, 210, 110), "", "spud", "scatter", ("city", "moon")),
+    _hx("MONSOON", "MONSOON", "Warm rain over a dark sea.", ((120, 150, 170), (70, 100, 130), (30, 50, 84), (6, 10, 28)), (30, 50, 80), (12, 22, 44), (130, 200, 240), "", "crate", "mudball", ("rain", "ocean"), False),
+    _hx("SYNTHWAVE", "SYNTHWAVE", "A perspective grid under a striped sun.", ((255, 120, 190), (180, 60, 190), (60, 20, 120), (8, 4, 30)), (50, 20, 90), (14, 8, 34), (255, 90, 220), "", "outrider", "zigzag", ("sun", "grid")),
+    _hx("TOKYO", "NEON RAIN", "A rain-soaked megacity.", ((90, 60, 150), (60, 36, 120), (30, 20, 80), (6, 4, 26)), (30, 24, 70), (12, 10, 30), (255, 110, 200), "", "marauder", "triskip", ("city", "rain")),
+    _hx("PYRAMIDS", "PYRAMIDS", "Golden pyramids at dusk.", ((255, 220, 140), (250, 160, 90), (150, 80, 90), (24, 14, 44)), (110, 70, 60), (44, 28, 30), (255, 200, 110), "ash", "sandstorm", "rainmaker", ("sun", "pyramids"), False),
+    _hx("TUNDRA", "TUNDRA", "Snow driven across pale mountains.", ((220, 235, 250), (160, 190, 225), (80, 110, 170), (14, 24, 56)), (110, 140, 180), (60, 80, 110), (190, 225, 255), "snow", "barracuda", "fireworks", ("mountains",)),
+    _hx("CANYONS", "RED CANYONS", "Layered rock under a hot sun.", ((255, 210, 150), (240, 130, 90), (140, 60, 80), (24, 12, 40)), (130, 60, 56), (46, 24, 26), (255, 150, 90), "ash", "raider", "walker", ("sun", "mountains"), False),
+    _hx("LAGOON", "MOON LAGOON", "A silver moon over a glassy lagoon.", ((150, 210, 235), (90, 150, 200), (30, 70, 130), (4, 10, 36)), (30, 60, 100), (10, 22, 46), (160, 230, 250), "fireflies", "stingray", "timecharge", ("moon", "ocean")),
+    _hx("THUNDERHEAD", "THUNDERHEAD", "Lightning inside a boiling storm.", ((120, 120, 150), (70, 70, 110), (30, 30, 66), (6, 6, 22)), (36, 36, 70), (14, 14, 32), (200, 210, 255), "", "trident", "rockslide", ("lightning", "rain"), False),
+    _hx("STEAMTOWN", "STEAMTOWN", "Smoking chimneys under a copper sky.", ((230, 170, 110), (170, 110, 90), (80, 56, 70), (14, 10, 26)), (66, 46, 54), (24, 18, 22), (255, 180, 100), "ash", "redoubt", "fortify", ("city",), False),
+    _hx("ORBITRING", "RINGED WORLD", "A banded planet hangs overhead.", ((90, 100, 190), (50, 60, 140), (24, 24, 80), (4, 4, 24)), (30, 34, 90), (10, 12, 36), (150, 180, 255), "stardust", "harpoon", "tunneler", ("planet",)),
+    _hx("BAMBOO", "BAMBOO RAIN", "Green stalks and soft rain.", ((190, 235, 200), (110, 190, 160), (40, 110, 110), (6, 24, 44)), (40, 90, 80), (14, 40, 34), (150, 240, 170), "", "cobra", "glasser", ("trees", "rain"), False),
+    _hx("NIGHTCITY", "NIGHT CITY", "Towers, rain and a moon behind the clouds.", ((90, 70, 130), (50, 40, 100), (24, 20, 66), (4, 4, 22)), (30, 26, 64), (10, 10, 26), (170, 150, 255), "", "tempestor", "warpshell", ("moon", "city", "rain")),
+    _hx("LAVAFALLS", "LAVA FALLS", "Burning peaks and a rain of embers.", ((255, 150, 60), (200, 60, 30), (80, 20, 24), (12, 2, 8)), (70, 20, 20), (24, 8, 10), (255, 130, 50), "embers", "hellcat", "tremor", ("mountains",), False),
+    _hx("VAPORWAVE", "VAPORWAVE", "A pastel sun and a drifting planet.", ((255, 190, 230), (200, 140, 240), (110, 90, 200), (20, 20, 70)), (90, 70, 160), (24, 20, 56), (255, 150, 230), "", "typhoon", "gravmine", ("sun", "grid", "planet")),
+    _hx("DEADSEA", "DEAD SEA", "A pale moon on black water.", ((120, 140, 170), (70, 90, 130), (30, 40, 80), (4, 6, 22)), (30, 40, 70), (8, 12, 28), (170, 200, 235), "ash", "gravedigger", "hailfall", ("moon", "ocean")),
+    _hx("SKYFORT", "SKY FORTRESS", "A needle tower above the clouds.", ((200, 220, 255), (130, 160, 230), (60, 80, 160), (8, 12, 48)), (60, 80, 140), (22, 30, 60), (190, 220, 255), "snow", "warmaster", "ricochet", ("tower", "comet")),
+    _hx("CYBERPUNK", "CYBERPUNK", "Glitching skyline in acid rain.", ((120, 255, 200), (50, 180, 170), (20, 70, 110), (2, 8, 28)), (20, 70, 90), (6, 22, 34), (80, 255, 200), "", "shatterer", "detonator", ("city", "rain", "glitch"), True, True),
+    _hx("MAELSTROM", "MAELSTROM", "Black water lit by lightning.", ((90, 110, 140), (50, 70, 110), (20, 34, 70), (4, 6, 22)), (24, 34, 66), (8, 12, 30), (160, 200, 255), "", "stormrider", "colossus", ("ocean", "lightning", "rain"), False),
+    _hx("ICEPALACE", "ICE PALACE", "A spire of ice under green aurora.", ((190, 250, 235), (100, 200, 200), (30, 100, 140), (4, 14, 48)), (40, 100, 130), (14, 36, 56), (160, 255, 230), "snow", "ironclad", "phantomorb", ("tower", "mountains"), True, True),
+    _hx("SOLARSTORM", "SOLAR STORM", "A giant sun and crackling bolts.", ((255, 250, 190), (255, 190, 90), (210, 90, 60), (40, 10, 30)), (130, 50, 40), (36, 12, 20), (255, 220, 120), "embers", "bloodhound", "meteor", ("sun", "lightning")),
+    _hx("GHOSTTOWN", "GHOST TOWN", "Empty windows under a cold moon.", ((150, 160, 190), (90, 100, 140), (40, 46, 84), (6, 8, 28)), (40, 46, 80), (12, 14, 30), (190, 205, 240), "ash", "sandshark", "sunder", ("moon", "city"), True),
+    _hx("QUASAR", "QUASAR", "A ringed world and a cosmic jet.", ((200, 160, 255), (120, 80, 220), (50, 30, 140), (4, 2, 28)), (50, 36, 120), (12, 8, 40), (190, 150, 255), "stardust", "ascendant", "vortex", ("planet", "comet"), True, True, True),
+    _hx("GALAXY", "SPIRAL GALAXY", "Comets crossing a violet galaxy.", ((130, 140, 255), (80, 70, 200), (36, 30, 120), (2, 2, 24)), (36, 34, 110), (10, 10, 40), (170, 180, 255), "stardust", "seraphim", "skyfall", ("planet", "comet"), True, True),
+    _hx("NEBULAR", "NEBULA SEA", "Pink and teal clouds in deep space.", ((255, 160, 220), (160, 90, 210), (50, 70, 170), (2, 4, 30)), (50, 60, 150), (12, 14, 50), (255, 160, 230), "stardust", "doombringer", "wormhole", ("comet",), True, True),
+    _hx("HYPERGATE", "HYPERGATE", "A tower of light and a streaming grid.", ((120, 255, 255), (50, 160, 220), (20, 60, 150), (2, 6, 34)), (24, 60, 130), (6, 14, 40), (120, 240, 255), "stardust", "starforge", "chainreact", ("tower", "grid", "comet"), True, True),
+    _hx("BLACKHOLE", "EVENT HORIZON", "A black sun ringed in fire.", ((255, 200, 120), (180, 70, 90), (60, 24, 100), (2, 2, 18)), (30, 14, 56), (8, 6, 20), (255, 180, 120), "stardust", "arcanist", "faultline", ("planet", "comet"), True, True, True),
+    _hx("AURORAKING", "AURORA KING", "Great ribbons over snowy peaks.", ((140, 255, 190), (60, 190, 170), (20, 90, 150), (2, 8, 40)), (24, 80, 120), (8, 24, 46), (130, 255, 190), "snow", "voidwalker", "mirrorshot", ("mountains", "comet"), True, True),
+    _hx("CRYSTALPEAK", "CRYSTAL PEAK", "Glittering peaks and floating stars.", ((220, 190, 255), (150, 120, 240), (60, 50, 160), (6, 4, 36)), (60, 50, 150), (16, 14, 52), (210, 180, 255), "stardust", "sunbreaker", "overkill", ("mountains", "moon"), True, True),
+    _hx("DRAGONSKY", "DRAGON SKY", "A storm over burning mountains.", ((255, 150, 110), (190, 70, 90), (70, 30, 100), (8, 4, 30)), (70, 28, 80), (20, 10, 34), (255, 150, 120), "embers", "templar", "cataclysm", ("mountains", "lightning"), True, True),
+    _hx("CELESTIA", "CELESTIA", "A golden gate beyond the clouds.", ((255, 245, 200), (255, 200, 140), (200, 130, 190), (30, 20, 80)), (130, 90, 170), (40, 28, 70), (255, 230, 150), "fireflies", "monolith", "prismrain", ("tower", "sun", "comet"), True, True, True),
+    _hx("ASTRALSEA", "ASTRAL SEA", "A starlit sea beneath ribbons of light.", ((140, 200, 255), (80, 130, 230), (30, 60, 160), (2, 6, 40)), (30, 60, 140), (8, 16, 50), (150, 210, 255), "stardust", "phoenix", "maelstrom", ("ocean", "comet", "planet"), True, True),
+    # --- terminal ticket rewards ---------------------------------------------------------------------------------
+    _hx("VOLTCITY", "VOLT CITY", "A storm over a city of towers.", ((90, 110, 190), (50, 60, 150), (24, 24, 90), (4, 4, 30)), (30, 34, 90), (10, 10, 36), (150, 210, 255), "", "voltsovereign", "arcstorm", ("city", "lightning", "rain")),
+    _hx("CLOCKWORKS", "CLOCKWORKS", "A giant tower ticking over a copper town.", ((255, 220, 150), (210, 150, 90), (110, 76, 70), (20, 14, 30)), (90, 66, 60), (30, 22, 26), (255, 215, 120), "", "magistrate", "gavel", ("city", "tower")),
+    _hx("FROSTCATHEDRAL", "FROST CATHEDRAL", "An ice cathedral beneath green aurora.", ((190, 250, 235), (100, 200, 210), (30, 100, 150), (4, 14, 50)), (40, 100, 140), (14, 36, 60), (160, 255, 235), "snow", "regent", "coldfront", ("tower", "mountains"), True, True),
+    _hx("SUNTEMPLE", "SUN TEMPLE", "A temple at sunset.", ((255, 230, 150), (255, 160, 90), (200, 80, 90), (30, 12, 40)), (120, 56, 56), (36, 16, 24), (255, 210, 100), "embers", "solarch", "sunburst", ("sun", "pyramids")),
+    _hx("SUNKENCITY", "SUNKEN CITY", "Drowned towers in black water.", ((120, 190, 220), (60, 120, 170), (20, 60, 120), (2, 8, 36)), (24, 60, 110), (8, 18, 44), (110, 210, 255), "fireflies", "abyssal", "undertow", ("city", "ocean")),
+    _hx("PYRAMIDPLAIN", "PYRAMID PLAIN", "Pyramids and a huge moon.", ((255, 220, 160), (230, 150, 100), (130, 80, 110), (20, 14, 44)), (110, 70, 70), (40, 26, 34), (255, 215, 130), "ash", "pharaoh", "duneshot", ("moon", "pyramids")),
+    _hx("CHEMWORKS", "CHEMICAL WORKS", "Smokestacks in acid rain.", ((170, 220, 120), (110, 160, 100), (50, 80, 80), (8, 18, 30)), (50, 80, 60), (18, 28, 24), (170, 255, 100), "ash", "baron", "plague", ("city", "rain"), False),
+    _hx("GOTHICKEEP", "GOTHIC KEEP", "A castle against a stormy moon.", ((150, 130, 190), (90, 70, 150), (40, 30, 90), (6, 4, 30)), (40, 30, 80), (12, 10, 30), (190, 160, 255), "", "shadowlord", "umbra", ("city", "moon", "lightning")),
+    _hx("ORBITALCITY", "ORBITAL CITY", "A space-station city and a distant world.", ((140, 200, 255), (70, 120, 230), (30, 50, 150), (2, 4, 36)), (30, 50, 140), (8, 14, 46), (150, 210, 255), "stardust", "overseer", "starshower", ("planet", "tower", "comet"), True, True),
+    _hx("PAGODAPEAK", "PAGODA PEAK", "Pagodas above the clouds.", ((255, 200, 190), (210, 140, 160), (100, 80, 140), (14, 12, 44)), (80, 66, 120), (24, 20, 46), (255, 190, 170), "snow", "warlord", "dragonfire", ("mountains", "trees", "moon")),
     # --- mission rewards ---------------------------------------------------------------------------------------
     _ht("OUTPOST", "FORWARD OUTPOST", "A lonely radio mast on a cold ridge.", ((200, 215, 225), (110, 130, 150), (40, 54, 70), (8, 12, 22)),
         (44, 56, 70), (24, 32, 42), (130, 150, 160), (170, 210, 230), (235, 245, 250), (110, 160, 190), "ash", "wardog", "bandit"),
@@ -3498,7 +3944,7 @@ HOME_THEMES: dict[str, HomeTheme] = {t.key: t for t in (
         ((150, 255, 170), (50, 190, 110), (24, 70, 100), (2, 8, 20)), (16, 50, 60), (6, 20, 28), (80, 220, 140), (120, 255, 170),
         (230, 255, 220), (60, 220, 150), "stardust", "ufo", "xenon", True, True, True),
 )}
-assert tuple(HOME_ORDER) == ("CLASSIC",) + tuple(HOME_THEMES) + ("MASTER", "SECRET")
+assert set(HOME_ORDER) == {"CLASSIC", "MASTER", "SECRET"} | set(HOME_THEMES) and len(HOME_ORDER) == len(set(HOME_ORDER))
 
 
 # ---------------------------------------------------------------------------
@@ -3516,33 +3962,51 @@ class ShopItem:
 
 
 SHOP_PAGES = ("TANKS", "AMMO", "MAIN SCREEN", "MAPS", "EXTRAS")
-TIER_COLORS = ((170, 205, 175), (120, 190, 255), (255, 165, 90), (255, 206, 100))
-COIN_PRICES = ((60, 70, 80, 90, 100), (200, 225, 250, 275, 300), (450, 500, 550, 600, 650), (800, 1000, 1200, 1400, 1600))
-CREDIT_PRICES = {0: (10, 14, 18, 22, 26), 1: (10, 14, 18, 22, 26), 2: (14, 18, 22, 26, 30), 3: (12, 16, 20, 24, 28)}   # master tier only
+TIER_COLORS = ((170, 205, 175), (120, 190, 255), (255, 165, 90), (255, 206, 100), (255, 70, 140))   # tier 4 = premium
+TIER_SIZE = 15                                         # items per ordinary tier; anything after tier 3 is the premium tier
+_TIER_RANGE = ((60, 190), (200, 650), (450, 1300), (800, 2400))          # cheapest..dearest coin price inside each tier
+PREMIUM_COINS = (5000, 6500, 8000, 9500, 11000)
+PREMIUM_CREDITS = (40, 50, 60, 70, 80)
 RGB_PRICE = (1000, 14)
+TICKET_PRICE = (14000, 120)
+
+
+def tier_of(index: int) -> tuple:
+    """(tier, position-in-tier) of the n-th item of a shop page: 15 per ordinary tier, then the premium tier."""
+    tier = min(index // TIER_SIZE, 4)
+    return tier, index - tier * TIER_SIZE
+
+
+def tier_price(tier: int, j: int) -> tuple:
+    """(coins, credits) for item j of a tier. Only master-tier (3) and premium (4) gear costs credits."""
+    if tier >= 4:
+        return PREMIUM_COINS[j % 5], PREMIUM_CREDITS[j % 5]
+    lo, hi = _TIER_RANGE[tier]
+    return int(round((lo + (hi - lo) * j / (TIER_SIZE - 1)) / 5) * 5), (10 + 2 * j if tier == 3 else 0)
 
 
 def _build_shop() -> tuple[ShopItem, ...]:
     items: list[ShopItem] = []
 
-    def grid(page: int, rows: list) -> None:          # rows: [(uid, name, blurb)] in tier order, five per tier
-        assert len(rows) == 20
+    def grid(page: int, rows: list) -> None:          # rows: [(uid, name, blurb)] in tier order
         for i, (uid, name, blurb) in enumerate(rows):
-            tier, j = i // 5, i % 5
-            items.append(ShopItem(uid, page, tier, name, blurb, COIN_PRICES[tier][j], CREDIT_PRICES[page][j] if tier == 3 else 0))
+            tier, j = tier_of(i)
+            items.append(ShopItem(uid, page, tier, name, blurb, *tier_price(tier, j)))
     grid(0, [(f"tank:{d.key}", d.name, d.blurb) for d in SHOP_DESIGNS])
     grid(1, [(f"ammo:{a.key}", a.name, a.blurb) for a in SHOP_AMMOS])
     grid(2, [(f"theme:{k.lower()}", HOME_THEMES[k].name, HOME_THEMES[k].blurb) for k in SHOP_THEMES])
     grid(3, [(f"map:{m.key}", m.name, m.description) for m in SHOP_MAPS])
     items.append(ShopItem("rgb:hull", 4, 3, "RGB HULL", "Your hull cycles through the whole rainbow.", *RGB_PRICE))
     items.append(ShopItem("rgb:shell", 4, 3, "RGB SHELL", "Your shells, trails and blasts cycle through the rainbow.", *RGB_PRICE))
+    items.append(ShopItem("ticket", 4, 4, "TERMINAL TICKET", "Summons a random boss from the vault. Win to claim its tank, ammo, map and "
+                          "main screen. Each boss appears once.", *TICKET_PRICE))
     return tuple(items)
 
 
 SHOP_ITEMS: tuple[ShopItem, ...] = _build_shop()
 SHOP_BY_UID = {i.uid: i for i in SHOP_ITEMS}
-assert len(SHOP_ITEMS) == 80 + 2 and len(SHOP_BY_UID) == len(SHOP_ITEMS)
-assert all((i.credits > 0) == (i.tier == 3) for i in SHOP_ITEMS)         # exactly the master-tier gear costs credits
+assert len(SHOP_BY_UID) == len(SHOP_ITEMS)
+assert all((i.credits > 0) == (i.tier >= 3) for i in SHOP_ITEMS)         # exactly the master-tier and premium gear costs credits
 
 
 # ---------------------------------------------------------------------------
@@ -3657,7 +4121,7 @@ def _build_missions() -> tuple:
         elif n in _RUSH:
             lv = _RUSH[n]
             m = Mission(n, {40: "BOSS RUSH I", 45: "BOSS RUSH II", 47: "THE GAUNTLET"}[n], "rush", Difficulty.HARD, Difficulty.MASTER,
-                        len(lv), 1, 1, 5, levels=lv,
+                        len(lv), 1, 1, 4, levels=lv,
                         blurb="Every boss in a row, one round each, no healing. One loss ends the run." if n != 47 else
                         "All twenty Tournament bosses, back to back. The end-game test.")
         elif n in _MARATHONS:
@@ -3706,6 +4170,126 @@ def mission_payout(m: Mission, won: bool, first: bool) -> Payout:
 
 
 # ---------------------------------------------------------------------------
+# Terminal Tickets: ten vault bosses. A ticket draws one that has not been beaten yet; beating it grants its tank, ammo, map
+# and main screen. Beaten bosses leave the pool; with all ten beaten the ticket is sold out.
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class TicketBoss:
+    key: str
+    name: str
+    tank: str
+    ammo: str
+    map_key: str
+    theme: str
+    hp: int
+    prec: float
+    taunt: str
+
+    def reward_ids(self) -> tuple:
+        return (f"tank:{self.tank}", f"ammo:{self.ammo}", f"map:{self.map_key}", f"theme:{self.theme.lower()}")
+
+
+TICKET_BOSSES: tuple = (
+    TicketBoss("volt", "VOLT SOVEREIGN", "voltsovereign", "arcstorm", "neon-skyline", "VOLTCITY", 9, 0.95, "THE CITY RUNS ON MY LIGHTNING."),
+    TicketBoss("magistrate", "IRON MAGISTRATE", "magistrate", "gavel", "clock-plaza", "CLOCKWORKS", 9, 0.9, "YOUR TIME IS UP."),
+    TicketBoss("regent", "GLACIER REGENT", "regent", "coldfront", "frozen-cathedral", "FROSTCATHEDRAL", 9, 0.9, "KNEEL IN THE COLD."),
+    TicketBoss("solar", "SOLAR ARCHON", "solarch", "sunburst", "sun-temple", "SUNTEMPLE", 10, 0.88, "THE SUN ANSWERS TO ME."),
+    TicketBoss("abyssal", "ABYSS LEVIATHAN", "abyssal", "undertow", "sunken-metropolis", "SUNKENCITY", 10, 0.88, "THE DEEP WILL TAKE YOU."),
+    TicketBoss("pharaoh", "SAND PHARAOH", "pharaoh", "duneshot", "pyramid-plain", "PYRAMIDPLAIN", 10, 0.85, "THE DESERT KEEPS ITS DEAD."),
+    TicketBoss("baron", "TOXIC BARON", "baron", "plague", "chemical-works", "CHEMWORKS", 11, 0.85, "BREATHE DEEP."),
+    TicketBoss("shadow", "SHADOW EMPEROR", "shadowlord", "umbra", "gothic-keep", "GOTHICKEEP", 11, 0.82, "THE DARK IS MY THRONE."),
+    TicketBoss("overseer", "COSMIC OVERSEER", "overseer", "starshower", "orbital-city", "ORBITALCITY", 12, 0.8, "I SEE EVERY SHOT."),
+    TicketBoss("warlord", "DRAGON WARLORD", "warlord", "dragonfire", "pagoda-peak", "PAGODAPEAK", 12, 0.78, "BURN, ALL OF YOU."),
+)
+TICKET_BOSS_BY_KEY = {b.key: b for b in TICKET_BOSSES}
+assert len(TICKET_BOSSES) == 10 and all(b.tank in DESIGN_BY_KEY and b.ammo in AMMO_BY_KEY and b.map_key in SPECIAL_MAP_BY_KEY
+                                        and b.theme in HOME_THEMES for b in TICKET_BOSSES)
+TICKET_PLAYER_HP, TICKET_WIN_COINS = 6, 600
+
+
+# ---------------------------------------------------------------------------
+# Custom tanks. Stored as self-describing records with STABLE component ids (never array indexes) and a format version, so a
+# saved tank still resolves after the game gains new components, tanks or reorders its lists. Anything that has gone missing
+# falls back to a sensible default for that slot instead of corrupting the save, and unknown extra fields are preserved.
+# ---------------------------------------------------------------------------
+CUSTOM_FMT = 1
+CUSTOM_TANK_FEE = 2500
+CUSTOM_TANK_MAX = 24
+CUSTOM_SLOTS = ("turret", "hull", "track", "barrel", "glow", "ambient", "accent")
+CUSTOM_FALLBACK = {"turret": "dome", "hull": "plain", "track": "std", "barrel": "single", "glow": "none", "ambient": "none", "accent": "WHITE"}
+FREE_PARTS = {"turret": {"dome", "box", "twin", "wide", "pillbox"}, "hull": {"plain", "plate", "ramp", "wide", "hex"},
+              "track": {"std", "full", "round", "tread"}, "barrel": {"single", "double", "heavy"},
+              "glow": {"none", "pulse", "blink"}, "ambient": {"none", "sparks", "mist"}}
+CUSTOM_DESIGNS: dict[str, TankDesign] = {}        # runtime registry: key "custom:<id>" (also mirrored into DESIGN_BY_KEY)
+
+
+def component_tables() -> dict:
+    """Every component id by slot: the single registry the workshop, the cheat screen and the validators all read."""
+    return {"turret": list(_TURRETS), "hull": list(_HULLS), "track": list(_TRACKS), "barrel": list(BARRELS),
+            "glow": list(GLOW_STYLES), "ambient": list(AMBIENT_KINDS), "accent": [n for n, _ in COLOR_CHOICES]}
+
+
+def design_from_custom(rec: dict) -> TankDesign:
+    """Builds a TankDesign from a stored record, repairing anything that no longer exists."""
+    tables, p = component_tables(), (rec.get("parts") if isinstance(rec.get("parts"), dict) else {})
+    pick = lambda slot: p.get(slot) if p.get(slot) in tables[slot] else CUSTOM_FALLBACK[slot]
+    t, h, k = pick("turret"), pick("hull"), pick("track")
+    amb = "+".join(a for a in str(p.get("ambient", "none")).split("+") if a in AMBIENT_KINDS) or "none"
+    name = "".join(c for c in str(rec.get("name", "CUSTOM")).upper() if c.isalnum() or c in " -")[:14].strip() or "CUSTOM"
+    lore = str(rec.get("lore", ""))[:60] or "A tank of your own design."
+    return TankDesign(f"custom:{rec.get('id', 'x')}", name, lore, _TURRETS[t] + _HULLS[h] + _TRACKS[k], barrel=pick("barrel"),
+                      glow=pick("glow"), ambient=amb, accent=COLOR_BY_NAME.get(p.get("accent"), (236, 242, 250)), parts=(t, h, k))
+
+
+def register_custom(rec: dict) -> Optional[TankDesign]:
+    if not isinstance(rec, dict) or not isinstance(rec.get("id"), str):
+        return None
+    d = design_from_custom(rec)
+    CUSTOM_DESIGNS[d.key] = d
+    DESIGN_BY_KEY[d.key] = d
+    return d
+
+
+def custom_designs(save: "SaveData") -> tuple:
+    return tuple(d for d in (register_custom(r) for r in save.custom_tanks) if d is not None)
+
+
+def workshop_components(save: "SaveData") -> dict:
+    """What the player may use in the workshop: the free starter set plus every component of every tank they own."""
+    have = {s: set(FREE_PARTS.get(s, ())) for s in CUSTOM_SLOTS}
+    owned = save.unlocked_tanks()
+    for d in ALL_DESIGNS:
+        if d.key not in owned and d.key not in {x.key for x in DESIGNS[:BASE_KITS]}:
+            continue
+        for slot, cid in zip(("turret", "hull", "track"), d.parts):
+            have[slot].add(cid)
+        have["barrel"].add(d.barrel)
+        have["glow"].add(d.glow)
+        have["ambient"].update(d.ambient.split("+"))
+    have["accent"] = {n for n, _ in COLOR_CHOICES}
+    tables = component_tables()
+    return {s: [c for c in tables[s] if c in have[s]] for s in CUSTOM_SLOTS}
+
+
+def component_counts(save: "SaveData") -> tuple:
+    """(unlocked, total) component counts, derived live from the registries."""
+    have, tables = workshop_components(save), component_tables()
+    return sum(len(have[s]) for s in CUSTOM_SLOTS if s != "accent"), sum(len(tables[s]) for s in CUSTOM_SLOTS if s != "accent")
+
+
+def content_counts(save: "SaveData") -> list:
+    """Every (label, owned, total) row the cheat screen shows - all computed from the current registries."""
+    tanks, ammo = save.unlocked_tanks(), save.unlocked_ammo()
+    official_t = [d for d in ALL_DESIGNS if d.key not in {x.key for x in SECRET_DESIGNS}]
+    official_a = [a for a in ALL_AMMOS if a.key not in {x.key for x in SECRET_AMMOS}]
+    comps = component_counts(save)
+    return [("TANKS", sum(d.key in tanks for d in official_t), len(official_t)), ("AMMO", sum(a.key in ammo for a in official_a), len(official_a)),
+            ("MAPS", len(MAPS) + len(save.unlocked_maps()), len(MAPS) + len(SPECIAL_MAPS)),
+            ("SCREENS", len(save.home_modes()), len(HOME_ORDER)), ("PARTS", comps[0], comps[1]),
+            ("CUSTOM", len(save.custom_tanks), CUSTOM_TANK_MAX)]
+
+
+# ---------------------------------------------------------------------------
 # Unlock registry. Everything that can be unlocked is listed here once; the 'iamethanlabs101' cheat simply
 # grants every entry, so adding a future unlockable is: register it below (one line) and give it a rule in
 # SaveData.is_unlocked if it isn't earned through a Tournament level's reward_ids() or bought in the shop.
@@ -3730,9 +4314,9 @@ def unlockables() -> tuple[Unlockable, ...]:
 
 
 def _register_default_unlockables() -> None:
-    for d in DESIGNS[BASE_KITS:] + SHOP_DESIGNS + MISSION_DESIGNS + SECRET_DESIGNS:
+    for d in DESIGNS[BASE_KITS:] + SHOP_DESIGNS + MISSION_DESIGNS + TICKET_DESIGNS + SECRET_DESIGNS:
         register_unlockable(f"tank:{d.key}", "tank", d.name)
-    for a in AMMOS[BASE_KITS:] + SHOP_AMMOS + MISSION_AMMOS + SECRET_AMMOS:
+    for a in AMMOS[BASE_KITS:] + SHOP_AMMOS + MISSION_AMMOS + TICKET_AMMOS + SECRET_AMMOS:
         register_unlockable(f"ammo:{a.key}", "ammo", a.name)
     for m in MISSIONS[1:]:                          # mission 1 is always open
         register_unlockable(f"mission:{m.number}", "mission", f"MISSION {m.number}")
@@ -3759,12 +4343,15 @@ class SaveData:
     `completed` = Tournament levels actually cleared (the chain rule applies: a level only counts if it was reachable).
     `granted`   = unlockables handed out some other way (shop purchases, cheat codes, legacy saves). A granted level is
                   only *open to play*; it is never marked cleared, and it never opens the level after it."""
-    VERSION = 4
+    VERSION = 5
 
     def __init__(self, path: Optional[Path] = None) -> None:
         self.path = path
         self.mission_completed: set[int] = set()   # missions cleared (chain rule applies)
         self.mission_paid: set[int] = set()        # missions whose FIRST-clear reward was already paid (also LAN co-op guests)
+        self.custom_tanks: list[dict] = []         # workshop creations: stable, versioned records (see design_from_custom)
+        self.tickets_won: set[str] = set()         # Terminal Ticket bosses already defeated (they leave the random pool)
+        self.ticket_active: str = ""               # a drawn-but-unbeaten ticket boss: retry it freely, it is never wasted
         self.completed: set[int] = set()
         self.granted: set[str] = set()
         self.coins = 0
@@ -3818,6 +4405,18 @@ class SaveData:
                 if n in mdone and (n == 1 or (n - 1) in ok_m or f"mission:{n}" in data.granted):
                     ok_m.add(n)
             data.mission_completed = ok_m
+        ct = raw.get("custom_tanks")
+        if isinstance(ct, list):
+            seen: set = set()
+            for rec in ct:
+                if isinstance(rec, dict) and isinstance(rec.get("id"), str) and rec["id"] not in seen:
+                    seen.add(rec["id"])
+                    data.custom_tanks.append(rec)                  # kept verbatim: unknown fields from newer versions survive
+                    register_custom(rec)
+        tk = raw.get("tickets")
+        if isinstance(tk, dict):
+            data.tickets_won = {k for k in tk.get("won", []) if isinstance(k, str)}
+            data.ticket_active = tk["active"] if isinstance(tk.get("active"), str) else ""
         paid = raw.get("missions_paid", [])
         data.mission_paid = {n for n in paid if isinstance(n, int) and 1 <= n <= len(MISSIONS)} | data.mission_completed \
             if isinstance(paid, list) else set(data.mission_completed)
@@ -3846,6 +4445,8 @@ class SaveData:
             "granted": sorted(self.granted),
             "missions_completed": sorted(self.mission_completed),
             "missions_paid": sorted(self.mission_paid),
+            "tickets": {"won": sorted(self.tickets_won), "active": self.ticket_active},
+            "custom_tanks": self.custom_tanks,
             "wallet": {"coins": self.coins, "credits": self.credits},
             "unlocked": {"tanks": sorted(self.unlocked_tanks()), "ammo": sorted(self.unlocked_ammo()),
                          "maps": [m.key for m in self.unlocked_maps()], "master_difficulty": self.master_unlocked,
@@ -3901,6 +4502,21 @@ class SaveData:
                 out.update(m.rewards)
         return out
 
+    def tickets_sold_out(self) -> bool:
+        return len(self.tickets_won & set(TICKET_BOSS_BY_KEY)) >= len(TICKET_BOSS_BY_KEY)
+
+    def buy_ticket(self, item: "ShopItem") -> str:
+        """Pays for a Terminal Ticket and draws a random boss that has not been beaten. Returns the boss key, or '' if it
+        could not be bought. A drawn boss stays active until beaten, so losing never wastes a ticket."""
+        if self.ticket_active or self.tickets_sold_out() or self.shortfall(item):
+            return ""
+        pool = sorted(set(TICKET_BOSS_BY_KEY) - self.tickets_won)
+        self.coins -= item.coins
+        self.credits -= item.credits
+        self.ticket_active = random.choice(pool)
+        self.flush()
+        return self.ticket_active
+
     def mission_unlocked(self, n: int) -> bool:
         return n == 1 or (n - 1) in self.mission_completed or f"mission:{n}" in self.granted
 
@@ -3921,6 +4537,8 @@ class SaveData:
             return self.level_unlocked(int(uid[6:]))
         if uid.startswith("mission:"):
             return self.mission_unlocked(int(uid[8:]))
+        if uid == "ticket":                                  # "owned" means sold out
+            return self.tickets_sold_out()
         return uid in self.granted or uid in self.earned()
 
     def grant(self, uid: str) -> bool:
@@ -3942,7 +4560,31 @@ class SaveData:
         return {u[len(kind) + 1:] for u in have if u.startswith(kind + ":")}
 
     def unlocked_tanks(self) -> set:
-        return {d.key for d in DESIGNS[:BASE_KITS]} | self._keys("tank")
+        return {d.key for d in DESIGNS[:BASE_KITS]} | self._keys("tank") | {f"custom:{r['id']}" for r in self.custom_tanks}
+
+    def create_custom(self, parts: dict, name: str, lore: str) -> str:
+        """Builds a custom tank for CUSTOM_TANK_FEE coins. Returns '' on success, otherwise the reason it failed."""
+        if len(self.custom_tanks) >= CUSTOM_TANK_MAX:
+            return "WORKSHOP FULL - DELETE A TANK FIRST"
+        if self.coins < CUSTOM_TANK_FEE:
+            return f"NEED {CUSTOM_TANK_FEE - self.coins} MORE COINS"
+        have = workshop_components(self)
+        if any(parts.get(s) not in have[s] for s in CUSTOM_SLOTS if s != "ambient") or \
+                any(a not in have["ambient"] for a in parts.get("ambient", "none").split("+")):
+            return "A CHOSEN PART IS NOT UNLOCKED"
+        rec = {"fmt": CUSTOM_FMT, "id": "c" + "".join(random.choice("0123456789abcdef") for _ in range(10)), "name": name, "lore": lore,
+               "parts": dict(parts), "created": time.strftime("%Y-%m-%d"), "game": __version__}
+        self.custom_tanks.append(rec)
+        register_custom(rec)
+        self.coins -= CUSTOM_TANK_FEE
+        self.flush()
+        return ""
+
+    def delete_custom(self, cid: str) -> None:
+        self.custom_tanks = [r for r in self.custom_tanks if r.get("id") != cid]
+        CUSTOM_DESIGNS.pop(f"custom:{cid}", None)
+        self.sanitize_loadouts()
+        self.flush()
 
     def unlocked_ammo(self) -> set:
         return {a.key for a in AMMOS[:BASE_KITS]} | self._keys("ammo")
@@ -4080,6 +4722,7 @@ class PlayerSetup:
     scale: float = 1.0
     hover: float = 0.0
     shield: int = 0
+    guard: bool = False
 
 
 @dataclass
@@ -4095,6 +4738,8 @@ class MatchConfig:
     my_owner: int = 0            # which LAN seat this machine plays (0 host, 1 client)
     world_size: Optional[tuple] = None   # LAN: fixed battlefield size shared by both machines
     ai_seed: int = 0
+    ammo_fx: bool = True         # special-ammo mechanics on/off (single player: on; tournament/missions: off; two player/LAN: rule)
+    special: bool = False        # two-player / LAN: the forfeit-two-turns-for-a-3-damage special attack is enabled
 
 
 class MatchSession:
@@ -4195,9 +4840,10 @@ def mission_foe(rng: random.Random, diff: Difficulty, prec: float, avoid: set, n
                        rng.choice(DESIGNS[:BASE_KITS]).key, rng.choice(AMMOS[:BASE_KITS]).key, hp, team=1, diff=diff, prec=prec)
 
 
-def ufo_setup(name: str, hp: int, diff: Difficulty, prec: float, scale: float = 3.0, color: RGB = (90, 230, 160)) -> PlayerSetup:
+def ufo_setup(name: str, hp: int, diff: Difficulty, prec: float, scale: float = 3.0, color: RGB = (90, 230, 160),
+              guard: bool = False) -> PlayerSetup:
     return PlayerSetup(name, "UFO", color, (170, 255, 200), True, "ranger", "xenon", hp, team=1, diff=diff, prec=prec, kind="ufo",
-                       scale=scale, hover=4.0 * scale + 2.0)
+                       scale=scale, hover=4.0 * scale + 2.0, guard=guard)
 
 
 class MissionSession(MatchSession):
@@ -4242,7 +4888,7 @@ class MissionSession(MatchSession):
             foes = [replace(boss_setup(lv, color_index(next((n for n, c in COLOR_CHOICES if c == self.humans[0].tank_color), "CYAN"))),
                             team=1, hp=3, diff=lv.difficulty, prec=lv.precision)]
         elif m.kind == "mother":
-            foes = [ufo_setup("MOTHERSHIP", m.ufo_hp, m.diff, m.prec * 1.2, 4.0, (120, 255, 190)),
+            foes = [ufo_setup("MOTHERSHIP", m.ufo_hp, m.diff, m.prec * 1.2, 4.0, (120, 255, 190), guard=True),
                     ufo_setup("DRONE A", m.enemy_hp, m.diff, m.prec * 1.5, 2.0, (200, 140, 255)),
                     ufo_setup("DRONE B", m.enemy_hp, m.diff, m.prec * 1.5, 2.0, (140, 200, 255))]
         elif m.kind == "ufo" or (m.kind == "coop" and m.coop_ufo):
@@ -4291,7 +4937,9 @@ class MissionSession(MatchSession):
         m = self.mission
         if i == 1:
             return f"LOST {self.wins[1]}/{self.fail_target}"
-        pre = f"{'MATCH' if m.kind == 'marathon' else 'BOSS'} {self.stage + 1}/{m.stages}  " if m.stages > 1 else ""
+        if m.kind == "rush":
+            return f"BOSS {self.stage + 1}/{m.stages}  ·  {m.stages - self.stage - 1} AFTER THIS"
+        pre = f"MATCH {self.stage + 1}/{m.stages}  " if m.stages > 1 else ""
         return f"{pre}WINS {self.wins[0]}/{self.stage_target}"
 
     def hud_title(self) -> str:
@@ -4305,6 +4953,8 @@ class MissionSession(MatchSession):
 
     def banner_note(self) -> str:
         m = self.mission
+        if m.kind == "mother" and self.round_no == 1:
+            return "THE MOTHERSHIP IS SHIELDED - DESTROY THE DRONES FIRST"
         if m.kind in ("marathon", "rush"):
             foe = self.config.players[-1]
             return f"VS {foe.name}" + (f"  ·  {self.stage_diff().value}" if m.kind == "marathon" else "")
@@ -4319,14 +4969,22 @@ class MissionSession(MatchSession):
         elif self.failed:
             nxt = "MISSION FAILED"
         elif self.stage_cleared:
-            nxt = f"{'MATCH' if m.kind == 'marathon' else 'BOSS'} WON - NEXT OPPONENT"
+            left = m.stages - self.stage - 1
+            nxt = f"{'MATCH' if m.kind == 'marathon' else 'BOSS'} WON - {left} {'MORE' if m.kind == 'marathon' else 'BOSS' + ('ES' if left != 1 else '') + ' LEFT IN THE GAUNTLET'}".replace("MORE", "MORE TO GO")
         elif winner == 0:
             nxt = f"{self.stage_target - self.wins[0]} MORE TO GO"
         else:
             nxt = f"ROUND LOST - {self.fail_target - self.wins[1]} MORE FAILS THE MISSION"
+        if m.kind == "rush":
+            beaten = self.stage + (1 if (self.stage_cleared or self.completed) else 0)
+            score = f"BOSSES BEATEN {beaten}/{m.stages}  ·  {m.stages - beaten} LEFT"
+        elif m.kind == "marathon":
+            score = f"MATCH {self.stage + 1}/{m.stages}  ·  ROUNDS {self.wins[0]}-{self.wins[1]}"
+        else:
+            score = f"{self.wins[0]}/{self.stage_target}  ·  LOST {self.wins[1]}/{self.fail_target}"
         return {"title": f"MISSION {m.number} - ROUND {self.round_no}",
                 "headline": "YOUR TEAM WINS THE ROUND" if winner == 0 else "THE ENEMY WINS THE ROUND",
-                "score": f"{self.wins[0]}/{self.stage_target}  ·  LOST {self.wins[1]}/{self.fail_target}", "sub": m.objective, "next": nxt}
+                "score": score, "sub": m.objective, "next": nxt}
 
     # -- results -------------------------------------------------------------
     def commit(self, app: "Application") -> None:
@@ -4381,13 +5039,124 @@ def build_mission_session(app, mission: Mission, loadouts: list, wingman: bool =
                           my_owner: int = 0, world: Optional[tuple] = None, seed: Optional[int] = None, humans: Optional[list] = None,
                           go: bool = True) -> MissionSession:
     humans = humans if humans is not None else humans_for(app, mission, loadouts, wingman, guest)
-    cfg = MatchConfig(list(humans), False, mission.diff, "mission", target=mission.target, net=net, my_owner=my_owner, world_size=world)
+    cfg = MatchConfig(list(humans), False, mission.diff, "mission", target=mission.target, ammo_fx=False, net=net, my_owner=my_owner, world_size=world)
     seed = app.rng.randrange(1 << 30) if seed is None else seed
     kw = {"loadouts": loadouts, "wingman": wingman, "guest": guest}
     s = MissionSession(mission, cfg, seed, humans, restart_kw=kw if net is None else None)
     if go:
         app.goto(BattleScene(app, s))
     return s
+
+
+class TicketSession(MatchSession):
+    """A Terminal Ticket boss fight: first to two rounds against one vault boss. Losing keeps the ticket active."""
+    exit_label = "SHOP"
+
+    def __init__(self, boss: TicketBoss, config: MatchConfig, seed: Optional[int]) -> None:
+        self.boss, self.committed, self.first_clear = boss, False, True
+        super().__init__(config, None, seed)
+
+    def _pick_map(self) -> MapDefinition:
+        return SPECIAL_MAP_BY_KEY[self.boss.map_key]
+
+    @property
+    def completed(self) -> bool:
+        return self.wins[0] >= 2
+
+    @property
+    def failed(self) -> bool:
+        return self.wins[1] >= 2
+
+    @property
+    def over(self) -> bool:
+        return self.completed or self.failed
+
+    @property
+    def champion(self) -> int:
+        return 0 if self.completed else 1
+
+    def hud_wins(self, i: int) -> str:
+        return f"WINS {self.wins[0]}/2" if i == 0 else f"LOST {self.wins[1]}/2"
+
+    def hud_title(self) -> str:
+        return f"TERMINAL TICKET  ·  {self.boss.name}  ·  {self.current_map.name}"
+
+    def banner_title(self) -> str:
+        return f"{self.boss.name} - ROUND {self.round_no}"
+
+    def banner_note(self) -> str:
+        return self.boss.taunt if self.round_no == 1 else ""
+
+    def round_summary(self, winner: int) -> dict:
+        nxt = ("BOSS DEFEATED!" if self.completed else "TICKET BATTLE LOST - TRY AGAIN, THE TICKET IS KEPT" if self.failed
+               else f"{2 - self.wins[0]} MORE TO GO" if winner == 0 else "ROUND LOST - ONE MORE FAILS THE BATTLE")
+        return {"title": f"{self.boss.name} - ROUND {self.round_no}", "headline": "YOU WIN THE ROUND" if winner == 0 else f"{self.boss.name} WINS THE ROUND",
+                "score": f"{self.wins[0]}/2  ·  LOST {self.wins[1]}/2", "sub": "WIN TWO ROUNDS", "next": nxt}
+
+    def commit(self, app: "Application") -> None:
+        if self.over and not self.committed:
+            self.committed = True
+            save = app.save
+            if self.completed:
+                save.tickets_won.add(self.boss.key)
+                save.ticket_active = ""
+                for uid in self.boss.reward_ids():
+                    save.grant(uid)
+                self.payout = Payout(TICKET_WIN_COINS)
+            else:
+                self.payout = Payout(COIN_HALF)
+            save.earn(self.payout)
+
+    def finish_scene(self, app: "Application") -> "Scene":
+        return TicketResultScene(app, self)
+
+    def exit_scene(self, app: "Application") -> "Scene":
+        return ShopScene(app, 4)
+
+    def restart(self, app: "Application") -> None:
+        start_ticket(app, self.boss.key)
+
+
+def start_ticket(app, key: str) -> None:
+    boss = TICKET_BOSS_BY_KEY.get(key)
+    if boss is None:                                         # an unknown id in a save: clear it rather than getting stuck
+        app.save.ticket_active = ""
+        app.save.flush()
+        app.goto(ShopScene(app, 4))
+        return
+    lo = app.save.loadout(0)
+    me = PlayerSetup("PLAYER", "YOU", COLOR_BY_NAME[lo.tank_color], COLOR_BY_NAME[lo.shot_color], False, lo.tank, lo.ammo,
+                     TICKET_PLAYER_HP, team=0)
+    foe = PlayerSetup(boss.name, "BOSS", DESIGN_BY_KEY[boss.tank].accent, (255, 255, 255), True, boss.tank, boss.ammo, boss.hp, team=1,
+                      diff=Difficulty.MASTER, prec=boss.prec)
+    cfg = MatchConfig([me, foe], False, Difficulty.MASTER, "ticket", target=2)
+    app.goto(BattleScene(app, TicketSession(boss, cfg, app.rng.randrange(1 << 30))))
+
+
+def ticket_art(save: "SaveData", t: float) -> PixelCanvas:
+    """The shop preview for the Terminal Ticket: a mystery ticket, or the drawn boss once one is active."""
+    cv = PixelCanvas(34, 20, (0, 0, 0))
+    for py in range(20):
+        cv.rows[py] = [mix((10, 6, 28), (60, 20, 80), py / 19)] * 34
+    boss = TICKET_BOSS_BY_KEY.get(save.ticket_active)
+    if boss:
+        for x in range(34):
+            for y in range(3):
+                cv.plot(x, y, (40, 36, 60))
+        draw_tank(cv, 17.0, 3, -1, 130, DESIGN_BY_KEY[boss.tank].accent, scale=2, design=DESIGN_BY_KEY[boss.tank], t=t)
+        return cv
+    for x in range(5, 29):                                   # a ticket with a notch on each side and a question mark
+        for y in range(5, 15):
+            if not ((x in (5, 28)) and y in (9, 10)):
+                cv.plot(x, y, mix((230, 190, 90), (255, 240, 170), 0.5 + 0.5 * math.sin(t * 2 + x * 0.3)))
+    for y in range(6, 14):
+        cv.plot(8, y, (150, 110, 40))
+    for (x, y) in ((16, 12), (17, 12), (18, 12), (18, 11), (18, 10), (17, 9), (16, 9), (16, 8), (17, 8), (18, 8)):
+        pass
+    for (x, y) in ((15, 11), (16, 12), (17, 12), (18, 11), (18, 10), (17, 9), (17, 8), (17, 6)):
+        cv.plot(x + 4, y, (90, 40, 120))
+    cv.plot(21, 6, (90, 40, 120))
+    return cv
 
 
 class TournamentSession(MatchSession):
@@ -4643,6 +5412,42 @@ def panel(screen: Screen, w: int, h: int, title: str, y: Optional[int] = None, f
     y = (screen.rows - h) // 2 if y is None else y
     screen.box(x, y, w, h, "double", fg, Palette.PANEL, title)
     return x, y
+
+
+def wrap_center(screen: Screen, y: int, text: str, width: int, fg: RGB, bg: Optional[RGB], x: int, w: int, lines: int = 2) -> int:
+    """Centred, word-wrapped text that never gets cut mid-word. Returns rows used."""
+    parts = textwrap.wrap(text, width) or [""]
+    if len(parts) > lines:
+        parts = parts[:lines]
+        parts[-1] = parts[-1][:max(0, width - 1)].rstrip() + "…"
+    for k, ln in enumerate(parts):
+        screen.center(y + k, ln, fg, bg, x, w)
+    return len(parts)
+
+
+def render_map_preview(cache: dict, mapdef: MapDefinition, w: int, h: int, t: float, tanks: list) -> PixelCanvas:
+    """Terrain scan used by the rules screens. tanks = [(design, colour), (design, colour)]."""
+    key = (mapdef.key, w, h)
+    if key not in cache:
+        rng = random.Random(1)
+        terrain = Terrain(w, h, mapdef, rng)
+        xs = []
+        for i in range(2):
+            x = int(mapdef.spawns[i] * w)
+            terrain.flatten(x + 0.5, 10)
+            xs.append(x + 0.5)
+        scen = Scenery(w, h, mapdef.theme, rng)
+        scen.apply_terrain(terrain)
+        cache[key] = (scen, terrain, xs)
+    scen, terrain, xs = cache[key]
+    cv = scen.canvas()
+    scen.draw_stars(cv, t)
+    scen.draw_aurora(cv, t)
+    scen.draw_fx(cv, t)
+    for i, x in enumerate(xs):
+        d, col = tanks[i]
+        draw_tank(cv, x, terrain.support_height(x), 1 if i == 0 else -1, 50 if i == 0 else 130, col, design=d, t=t)
+    return cv
 
 
 # ============================================================================
@@ -5089,9 +5894,7 @@ def prism_text(screen: Screen, x: int, y: int, text: str, t: float, base: float 
 
 def draw_master_logo(screen: Screen, y: int, t: float, tall: bool) -> int:
     """Gold logo with a travelling prismatic shimmer and animated ornament lines."""
-    orn = "◆" + "━" * 17 + "◆" + "━" * 17 + "◆"
-    prism_text(screen, (screen.cols - len(orn)) // 2, y, orn, t, 0.11, 0.03)
-    y += 1
+    y += 1                                                   # (ornament removed; row kept for breathing room)
     words = [big_word("TERMINAL")] + ([big_word("TANKS")] if tall else [])
     shimmer = (t * 36) % 120 - 25
     for wi, rows in enumerate(words):
@@ -5236,7 +6039,178 @@ class SecretBackdrop:
                     continue
                 bgc = screen.back[top + r][c][2]
                 screen.back[top + r][c] = ("▀", bgc if a == (0, 0, 0) else a, bgc if b == (0, 0, 0) else b)
-        
+
+
+def _cell(screen: Screen, x: int, y: int, col: RGB, ch: str = " ", fg: Optional[RGB] = None) -> None:
+    if 0 <= x < screen.cols and 0 <= y < screen.rows:
+        screen.put(x, y, ch, fg or col, col)
+
+
+def _L_disc(self, screen, cols, rows, cx, cy, r, col, glow=True):
+    for y in range(int(cy - r * 1.8), int(cy + r * 1.8) + 1):
+        for x in range(int(cx - r * 3.4), int(cx + r * 3.4) + 1):
+            d = math.hypot((x - cx) / 2.0, y - cy)
+            if d <= r:
+                _cell(screen, x, y, col)
+            elif glow and d <= r * 1.7 and 0 <= y < rows and 0 <= x < cols:
+                bg = screen.back[y][x][2]
+                screen.back[y][x] = (screen.back[y][x][0], screen.back[y][x][1], mix(bg, col, 0.32 * (1 - (d - r) / (r * 0.7))))
+
+
+def _L_moon(self, screen, cols, rows, t):
+    r = max(3, rows // 8)
+    cx, cy = cols * 0.2, rows * 0.22
+    _L_disc(self, screen, cols, rows, cx, cy, r, mix(self.th.accent, (255, 255, 255), 0.7))
+    for dx, dy, cr in ((-0.3, -0.2, 0.28), (0.25, 0.25, 0.22), (0.1, -0.4, 0.15)):
+        _L_disc(self, screen, cols, rows, cx + dx * r * 2, cy + dy * r, r * cr, mix(self.th.accent, (60, 60, 80), 0.4), False)
+
+
+def _L_sun(self, screen, cols, rows, t):
+    r = max(4, rows // 6)
+    cx, cy = cols * 0.66, rows * 0.58 + math.sin(t * 0.2) * 0.4
+    _L_disc(self, screen, cols, rows, cx, cy, r, mix(self.th.accent, (255, 255, 235), 0.5))
+    for k in range(0, int(r * 2), 3):                                    # horizontal slits through the lower half (retro sun)
+        for x in range(int(cx - r * 2), int(cx + r * 2) + 1):
+            y = int(cy + r * 0.2 + k * 0.6)
+            if 0 <= y < rows and 0 <= x < cols and math.hypot((x - cx) / 2.0, y - cy) <= r:
+                screen.back[y][x] = (" ", (0, 0, 0), self.rowcol[y])
+
+
+def _L_city(self, screen, cols, rows, t):
+    r = random.Random(self.th.key)
+    x, hz = 0, int(rows * 0.76)
+    while x < cols:
+        bw, bh = r.randint(4, 9), r.randint(rows // 8, rows // 3)
+        for yy in range(hz - bh, hz):
+            for xx in range(x, min(cols, x + bw)):
+                lit = (xx * 7 + yy * 13 + x) % 5 < 2 and (xx - x) % 2 == 1 and (yy % 2 == 0) and (int(t * 0.4) + xx + yy) % 11 != 0
+                _cell(screen, xx, yy, mix(self.th.far, (0, 0, 0), 0.45) if not lit else mix(self.th.accent, (255, 230, 160), 0.5))
+        x += bw + r.randint(0, 2)
+
+
+def _L_mountains(self, screen, cols, rows, t):
+    hz = int(rows * 0.76)
+    for x in range(cols):
+        h = int(rows * 0.2 + rows * 0.12 * math.sin(x * 0.045 + 1) + rows * 0.07 * math.sin(x * 0.11) + 3 * abs(math.sin(x * 0.02)))
+        for k in range(h):
+            y = hz - k
+            cap = k >= h - 2 and h > rows * 0.24
+            _cell(screen, x, y, mix(self.th.far, (255, 255, 255), 0.65) if cap else mix(self.th.far, (0, 0, 0), 0.25 + 0.2 * k / max(1, h)))
+
+
+def _L_grid(self, screen, cols, rows, t):
+    hz = int(rows * 0.72)
+    for y in range(hz, rows):
+        k = (y - hz) / max(1, rows - hz)
+        for x in range(cols):
+            on_h = int((k * 8 + t * 0.9) * 2) % 4 == 0
+            vx = (x - cols / 2) / max(0.3, 0.25 + k * 1.6)
+            on_v = abs(vx - round(vx / 6) * 6) < 0.5
+            bg = self.rowcol[y]
+            if on_h or on_v:
+                _cell(screen, x, y, mix(bg, self.th.accent, 0.45 + 0.4 * k))
+            else:
+                _cell(screen, x, y, mix(bg, (0, 0, 0), 0.55))
+
+
+def _L_ocean(self, screen, cols, rows, t):
+    hz = int(rows * 0.7)
+    for y in range(hz, rows):
+        k = (y - hz) / max(1, rows - hz)
+        for x in range(cols):
+            w = math.sin(x * 0.35 + t * 1.6 + y * 0.9) + math.sin(x * 0.13 - t * 0.7)
+            base = mix(self.th.far, (0, 0, 0), 0.3 + 0.3 * k)
+            _cell(screen, x, y, mix(base, self.th.accent, 0.35) if w > 1.25 else base, "~" if w > 1.25 else " ", mix(base, self.th.accent, 0.8))
+
+
+def _L_planet(self, screen, cols, rows, t):
+    r = max(5, rows // 5)
+    cx, cy = cols * 0.74, rows * 0.28
+    _L_disc(self, screen, cols, rows, cx, cy, r, mix(self.th.far, self.th.accent, 0.5), False)
+    for x in range(int(cx - r * 3.3), int(cx + r * 3.3) + 1):
+        y = int(cy + (x - cx) * 0.12)
+        if abs((x - cx) / 2.0) > r * 0.4 and 0 <= y < rows and 0 <= x < cols:
+            _cell(screen, x, y, mix(self.th.accent, (255, 255, 255), 0.4), "─")
+            _cell(screen, x, y + 1, mix(self.th.accent, (255, 255, 255), 0.2), "─")
+
+
+def _L_pyramids(self, screen, cols, rows, t):
+    hz = int(rows * 0.76)
+    for cx, h in ((cols * 0.25, rows * 0.28), (cols * 0.55, rows * 0.4), (cols * 0.82, rows * 0.22)):
+        for k in range(int(h)):
+            hw = int((h - k) * 1.9)
+            for x in range(int(cx - hw), int(cx + hw) + 1):
+                _cell(screen, x, hz - k, mix(self.th.far, (255, 255, 255), 0.18) if x >= cx else mix(self.th.far, (0, 0, 0), 0.3))
+
+
+def _L_trees(self, screen, cols, rows, t):
+    hz, r = int(rows * 0.77), random.Random(self.th.key + "t")
+    x = 1
+    while x < cols - 2:
+        h = r.randint(rows // 8, rows // 4)
+        for k in range(h):
+            hw = int((h - k) * 0.55) + (1 if k % 3 == 0 else 0)
+            for xx in range(x - hw, x + hw + 1):
+                _cell(screen, xx, hz - k, mix(self.th.far, (0, 0, 0), 0.5))
+        x += r.randint(3, 7)
+
+
+def _L_rain(self, screen, cols, rows, t):
+    for i in range(cols // 2):
+        x0, sp = (i * 37) % cols, 14 + (i * 5) % 9
+        y = int((t * sp + i * 11) % rows)
+        x = int(x0 - y * 0.3) % cols
+        if 0 <= y < rows:
+            bg = screen.back[y][x][2]
+            screen.back[y][x] = ("╱", mix(bg, (200, 220, 255), 0.55), bg)
+
+
+def _L_lightning(self, screen, cols, rows, t):
+    period = 3.2
+    k = int(t / period)
+    local = t - k * period
+    if local > 0.3:
+        return
+    r = random.Random(k)
+    x, y = r.randint(cols // 6, cols - cols // 6), 0
+    while y < int(rows * 0.76):
+        _cell(screen, x, y, (240, 245, 255), "█" if local < 0.15 else "▓", (240, 245, 255))
+        x += r.choice((-1, 0, 1)) * 2
+        y += 1
+
+
+def _L_tower(self, screen, cols, rows, t):
+    hz, cx = int(rows * 0.76), int(cols * 0.3)
+    for k in range(int(rows * 0.7)):
+        hw = max(0, int(3 - k * 3.0 / (rows * 0.7)) + (1 if k % 6 == 0 else 0))
+        for x in range(cx - hw, cx + hw + 1):
+            _cell(screen, x, hz - k, mix(self.th.far, (0, 0, 0), 0.35))
+        if k % 5 == 2:
+            _cell(screen, cx, hz - k, mix(self.th.accent, (255, 255, 255), 0.4))
+    if int(t * 2) % 2 == 0:
+        _cell(screen, cx, hz - int(rows * 0.7), (255, 80, 80))
+
+
+def _L_comet(self, screen, cols, rows, t):
+    for i in range(3):
+        k = ((t * 0.18 + i * 0.37) % 1.0)
+        x, y = int(cols * (1.1 - k * 1.3)), int(rows * (0.05 + k * 0.5 + i * 0.07))
+        for s in range(10):
+            _cell(screen, x + s * 2, y - s // 2, mix(self.rowcol[min(rows - 1, max(0, y))], (255, 255, 255), 0.9 * (1 - s / 10)), "─", mix(self.rowcol[min(rows - 1, max(0, y))], (255, 255, 255), 0.9 * (1 - s / 10)))
+
+
+def _L_glitch(self, screen, cols, rows, t):
+    r = random.Random(int(t * 6))
+    for _ in range(3):
+        y, w, x0 = r.randrange(rows), r.randint(cols // 8, cols // 3), r.randrange(cols)
+        for x in range(x0, min(cols, x0 + w)):
+            ch, fg, bg = screen.back[y][x]
+            screen.back[y][x] = (ch, bg, mix(fg, self.th.accent, 0.5))
+
+
+LAYER_DRAWERS = {"moon": _L_moon, "sun": _L_sun, "city": _L_city, "mountains": _L_mountains, "grid": _L_grid, "ocean": _L_ocean,
+                 "planet": _L_planet, "pyramids": _L_pyramids, "trees": _L_trees, "rain": _L_rain, "lightning": _L_lightning,
+                 "tower": _L_tower, "comet": _L_comet, "glitch": _L_glitch}
 
 
 class ThemeBackdrop:
@@ -5322,6 +6296,8 @@ class ThemeBackdrop:
                 if 0 <= y < rows:
                     lvl = (0.5, 0.75, 1.0)[int((math.sin(t * 5 * sp + ph) + 1) * 1.49)]
                     screen.put(x, y, "•" if sp > 1.0 else "∙", mix(rc[y], pal[ci], alpha * lvl), rc[y])
+        for name in th.layers:
+            LAYER_DRAWERS[name](self, screen, cols, rows, t)
         for x in range(cols):
             h = self.ridge[x]
             screen.fill(x, rows - h, 1, h, th.far)
@@ -5374,8 +6350,6 @@ class ThemeBackdrop:
 
 def draw_theme_logo(screen: Screen, y: int, t: float, tall: bool, th: HomeTheme) -> int:
     """Gradient logo in the theme's colours with a travelling shimmer."""
-    ornament = "╺━━━━━━━  ◆  ━━━━━━━╸"
-    screen.center(y, ornament, mix(th.accent, th.logo_b, 0.3))
     y += 1
     words = [big_word("TERMINAL")] + ([big_word("TANKS")] if tall else [])
     shimmer = (t * 36) % 140 - 25
@@ -5631,7 +6605,7 @@ class TitleScene(HomeScene):
 class MenuScene(HomeScene):
     def __init__(self, app) -> None:
         super().__init__(app)
-        self.menu = MenuList(["SINGLE PLAYER", "TWO PLAYER", "LAN PLAY", "TOURNAMENT", "MISSIONS", "SHOP", "HOW TO PLAY", "SETTINGS", "CHEAT CODES", "QUIT"])
+        self.menu = MenuList(["SINGLE PLAYER", "TWO PLAYER", "LAN PLAY", "TOURNAMENT", "MISSIONS", "SHOP", "WORKSHOP", "HOW TO PLAY", "SETTINGS", "CHEAT CODES", "LINKS", "QUIT"])
 
     def handle(self, ev: InputEvent) -> None:
         if ev.raw in ("h", "H", "TAB"):
@@ -5641,30 +6615,33 @@ class MenuScene(HomeScene):
             self.app.goto(TitleScene(self.app))
             return
         choice = self.menu.handle(ev)
-        if choice == 0:
-            self.app.goto(SetupScene(self.app, "single"))
-        elif choice == 1:
-            self.app.goto(RulesScene(self.app, "TWO PLAYER RULES", lambda r: self.app.goto(SetupScene(self.app, "two", rules=r))))
-        elif choice == 2:
-            if IS_WEB:
-                self.app.goto(NetNoticeScene(self.app, "LAN PLAY NEEDS THE DESKTOP GAME",
-                                             "Browsers cannot open the raw TCP/UDP sockets LAN play uses. Run terminaltanks.py in a terminal to play over a LAN."))
-            else:
-                self.app.goto(LanMenuScene(self.app))
-        elif choice == 3:
-            self.app.goto(TournamentScene(self.app))
-        elif choice == 4:
-            self.app.goto(MissionsScene(self.app))
-        elif choice == 5:
-            self.app.goto(ShopScene(self.app))
-        elif choice == 6:
-            self.app.goto(HowToScene(self.app))
-        elif choice == 7:
-            self.app.goto(SettingsScene(self.app))
-        elif choice == 8:
-            self.app.goto(CheatScene(self.app))
-        elif choice == 9:
-            self.app.running = False
+        if choice is None:
+            return
+        app, label = self.app, self.menu.items[choice]
+        if label == "SINGLE PLAYER":
+            app.goto(SetupScene(app, "single"))
+        elif label == "TWO PLAYER":
+            app.goto(RulesScene(app, "TWO PLAYER RULES", lambda r: app.goto(SetupScene(app, "two", rules=r)), kind="two"))
+        elif label == "LAN PLAY":
+            app.goto(LanMenuScene(app))
+        elif label == "TOURNAMENT":
+            app.goto(TournamentScene(app))
+        elif label == "MISSIONS":
+            app.goto(MissionsScene(app))
+        elif label == "SHOP":
+            app.goto(ShopScene(app))
+        elif label == "WORKSHOP":
+            app.goto(WorkshopScene(app))
+        elif label == "HOW TO PLAY":
+            app.goto(HowToScene(app))
+        elif label == "SETTINGS":
+            app.goto(SettingsScene(app))
+        elif label == "CHEAT CODES":
+            app.goto(CheatScene(app))
+        elif label == "LINKS":
+            app.goto(LinksScene(app))
+        elif label == "QUIT":
+            app.running = False
 
     def draw(self, screen: Screen) -> None:
         super().draw(screen)
@@ -5838,6 +6815,8 @@ def unlock_hint(kind: str, key: str) -> str:
     for m in MISSIONS:
         if f"{kind}:{key}" in m.rewards:
             return f"LOCKED - CLEAR MISSION {m.number}"
+    if any(f"{kind}:{key}" in b.reward_ids() for b in TICKET_BOSSES):
+        return "LOCKED - WIN IT FROM A TERMINAL TICKET"
     item = SHOP_BY_UID.get(f"{kind}:{key}")
     if item:
         return f"LOCKED - SHOP: {item.coins} COINS" + (f" + {item.credits} CREDITS" if item.credits else "")
@@ -5880,8 +6859,9 @@ class SetupScene(BackdropScene):
     def _kits(self, name: str) -> tuple:
         """Every Tournament kit (locked ones are shown as locked) plus any secret kit that has been unlocked."""
         if name == "TANK":
-            return DESIGNS + SHOP_DESIGNS + MISSION_DESIGNS + tuple(d for d in SECRET_DESIGNS if d.key in self.app.save.unlocked_tanks())
-        return AMMOS + SHOP_AMMOS + MISSION_AMMOS + tuple(a for a in SECRET_AMMOS if a.key in self.app.save.unlocked_ammo())
+            return (DESIGNS + SHOP_DESIGNS + MISSION_DESIGNS + TICKET_DESIGNS + custom_designs(self.app.save)
+                    + tuple(d for d in SECRET_DESIGNS if d.key in self.app.save.unlocked_tanks()))
+        return AMMOS + SHOP_AMMOS + MISSION_AMMOS + TICKET_AMMOS + tuple(a for a in SECRET_AMMOS if a.key in self.app.save.unlocked_ammo())
 
     def _cycle_kit(self, items: tuple, attr: str, d: int) -> None:
         lo = self._cur()
@@ -5966,7 +6946,7 @@ class SetupScene(BackdropScene):
         pcol = color_index(self.sel[0].tank_color)
         if self.mode == "tournament":
             cfg = MatchConfig([mk(0, "PLAYER", "YOU"), boss_setup(self.level, pcol)], True, self.level.difficulty, "tournament",
-                              self.level.precision)
+                              self.level.precision, ammo_fx=False)
             app.start_tournament(self.level, cfg)
             return
         if self.mode == "single":
@@ -5976,7 +6956,9 @@ class SetupScene(BackdropScene):
         else:
             r = self.rules or Rules()
             cfg = MatchConfig([mk(0, "PLAYER 1", "P1"), mk(1, "PLAYER 2", "P2")], False, app.settings.difficulty, "two",
-                              target=r.target, label=r.label)
+                              target=r.target, label=r.label, special=r.special, ammo_fx=r.ammo_fx)
+            app.start_match(cfg, r.mapdef, r.wind_value(app.settings))          # the rules screen already chose map + wind
+            return
         if app.settings.random_maps:
             app.start_match(cfg, None)
         else:
@@ -6013,8 +6995,9 @@ class SetupScene(BackdropScene):
                 label = f"◄ {label} ►" if sel else label
                 screen.text(x + 41 - len(label), ry, label, Palette.DANGER if bad else Palette.AMBER, bg)
                 hint = unlock_hint("tank" if name == "TANK" else "ammo", kit.key) if bad else kit.blurb
-                screen.text(x + 3, ry + 1, hint[:38], Palette.DANGER if bad else Palette.MUTED, Palette.PANEL)
-                ry += 3
+                for k2, ln in enumerate(textwrap.wrap(hint, 39)[:2]):
+                    screen.text(x + 3, ry + 1 + k2, ln, Palette.DANGER if bad else Palette.MUTED, Palette.PANEL)
+                ry += 4
             elif name in ("HULL COLOR", "SHELL COLOR"):
                 cur = lo.tank_color if name == "HULL COLOR" else lo.shot_color
                 idx = color_index(cur)
@@ -6032,7 +7015,7 @@ class SetupScene(BackdropScene):
                 last = self.page + 1 == self.pages
                 text = ("[ START RUN ]" if self.mode == "tournament" else "[ READY ]") if last else "[ NEXT PLAYER ]"
                 screen.center(ry, text, Palette.PRIMARY if sel else Palette.MUTED, bg, x + 2, 40)
-        draw_keycaps(screen, x + 2, y + 22, (("W/S", "ROW"), ("A/D", "PICK"), ("SHIFT", "x5"), ("ENTER", "OK"), ("ESC", "BACK")), Palette.PANEL)
+        draw_keycaps(screen, x + 2, y + 22, (("W/S", "ROW"), ("A/D", "PICK"), ("SHIFT", "x5"), ("ENTER", "OK")), Palette.PANEL)
         px = x + 46
         screen.box(px, y, 48, 24, "double", Palette.LINE, Palette.PANEL, "LIVE PREVIEW")
         lock = self._locked(lo)
@@ -6046,9 +7029,17 @@ class SetupScene(BackdropScene):
             screen.center(y + 20, lv.objective, Palette.TEXT, Palette.PANEL, px, 48)
             screen.center(y + 21, lv.rule_text, GOLD if lv.rule else Palette.MUTED, Palette.PANEL, px, 48)
         else:
-            screen.center(y + 19, "Looks only: every kit plays identically", Palette.MUTED, Palette.PANEL, px, 48)
+            if self.mode == "mission":
+                note, nc = "Looks only: every kit plays identically", Palette.MUTED
+            elif self.rules is not None and not self.rules.ammo_fx:
+                note, nc = "Special ammo OFF: every kit plays identically", Palette.MUTED
+            else:
+                note, nc = "Special ammo effects are ACTIVE in this mode", Palette.AMBER
+            screen.center(y + 19, note, nc, Palette.PANEL, px, 48)
         if self.msg_t > 0:
             screen.center(y + 22, self.msg, Palette.DANGER, Palette.PANEL, px, 48)
+        else:
+            screen.center(y + 22, "ESC  BACK", Palette.MUTED, Palette.PANEL, px, 48)
 
 
 class MapSelectScene(BackdropScene):
@@ -6083,7 +7074,7 @@ class MapSelectScene(BackdropScene):
             tanks = []
             for i in range(2):
                 x = int(mapdef.spawns[i] * 46)
-                terrain.flatten(x + 0.5, 6)
+                terrain.flatten(x + 0.5, 10)
                 tanks.append(x + 0.5)
             scen = Scenery(46, 26, mapdef.theme, rng)
             scen.apply_terrain(terrain)
@@ -6219,6 +7210,10 @@ class Ev:
     first: bool = False
     pull: float = 0.0
     multi: bool = False
+    big: bool = False            # the special attack: bigger visuals everywhere
+
+
+SPECIAL_DMG, SPECIAL_RADIUS = 3, 2.0
 
 
 @dataclass
@@ -6229,8 +7224,9 @@ class FlightSpec:
     events: list = field(default_factory=list)
 
 
-def make_ammo_launch(w: "BattleWorld", tank: Tank, angle: float, power: float, wind: Optional[float] = None) -> Launch:
-    M = tank.ammo.mechanics
+def make_ammo_launch(w: "BattleWorld", tank: Tank, angle: float, power: float, wind: Optional[float] = None,
+                     special: bool = False) -> Launch:
+    M = {} if (special or not getattr(w, "ammo_fx", True)) else tank.ammo.mechanics
     L = w.physics.make_launch(tank.launch_origin(angle), angle, power, gravity=w.physics.cfg.gravity * M.get("g", 1.0),
                               wind=(w.wind if wind is None else wind) * M.get("wind", 1.0))
     if M.get("speed", 1.0) != 1.0:
@@ -6240,14 +7236,17 @@ def make_ammo_launch(w: "BattleWorld", tank: Tank, angle: float, power: float, w
     return L
 
 
-def plan_shot(w: "BattleWorld", tank: Tank) -> list:
-    M, phys = tank.ammo.mechanics, w.physics
-    L = make_ammo_launch(w, tank, tank.angle, tank.power)
+def plan_shot(w: "BattleWorld", tank: Tank, special: bool = False) -> list:
+    """A special attack is a plain arc ending in one huge 3-damage blast (the ammo's own looks, scaled up)."""
+    M, phys = ({} if (special or not getattr(w, "ammo_fx", True)) else tank.ammo.mechanics), w.physics
+    L = make_ammo_launch(w, tank, tank.angle, tank.power, special=special)
     probe = lambda: w.owner_probe(tank.index)
     tr = phys.trace(L, probe(), 0.02, 0.0, 12.0)
     flights: list = []
 
     def main_ev(imp: Impact, first: bool, radius: float, mode: Optional[str] = None) -> Ev:
+        if special:
+            return Ev(imp.x, imp.y, imp.kind, imp.tank, SPECIAL_RADIUS, SPECIAL_DMG, "blast", 0.0, first, 0.0, False, True)
         return Ev(imp.x, imp.y, imp.kind, imp.tank, radius, int(M.get("dmg", 1)), mode or M.get("terrain", "blast"), 0.0, first,
                   float(M.get("pull", 0.0)), bool(M.get("multi", 0)))
 
@@ -6337,6 +7336,7 @@ class BattleScene(Scene):
         self._aim_timer = 0.0
         self.proj: Optional[Projectile] = None
         self.flights: list = []
+        self.special_shot = False
         self.pending: list = []
         self.ev: Optional[Ev] = None
         self.victims: list = []
@@ -6395,6 +7395,7 @@ class BattleScene(Scene):
         size = self.session.config.world_size or (L.fcols, L.frows * 2)
         seed = self.session.round_seed()
         self.world = BattleWorld(size[0], size[1], self.session.current_map, seed, self.session.config.players, s)
+        self.world.ammo_fx = self.session.config.ammo_fx
         self.srng = random.Random(seed ^ 0xA11E)              # scene-level decisions every LAN machine must repeat identically
         self._make_order()
 
@@ -6456,7 +7457,9 @@ class BattleScene(Scene):
             self.banner = Banner("UFO CHARGING", "", tank.color, 0.8)
             self._end_turn()
             return
-        self.banner = Banner(self._turn_text(self.turn), self._wind_text(), tank.color, 0.9 if volley else 1.3)
+        ready = self.session.config.special and tank.charge >= 2
+        self.banner = Banner(self._turn_text(self.turn), "SPECIAL READY - FIRE FOR 3 DAMAGE!" if ready else self._wind_text(), tank.color,
+                             0.9 if volley else 1.3)
         ctl = self._control(tank)
         self._aim_sent = None
         if ctl == "ai" and tank.index in self.ais:
@@ -6482,12 +7485,15 @@ class BattleScene(Scene):
                 break
         tank.x = cand
         tank.vis_dx = old - tank.x
-        w.terrain.flatten(tank.x, 6)
+        w.terrain.flatten(tank.x, 10)
         tank.y = float(w.terrain.support_height(tank.x)) + tank.hover
         frac = tank.hp / tank.max_hp
         thresholds = (0.66, 0.33)
+        drone = tank.name.startswith("DRONE")             # Mothership fight: only the mothership ever shields
         while tank.phase < 2 and frac <= thresholds[tank.phase]:
             tank.phase += 1
+            if drone:
+                continue
             tank.shield = 2
             self.floaters.append(FloatText(tank.x, tank.y + tank.height + 8, "SHIELDS UP", (140, 230, 255)))
         if tank.turns % 2 == 1:                          # charging turn: the saucer only repositions - a breather for the player
@@ -6526,7 +7532,11 @@ class BattleScene(Scene):
         origin = tank.launch_origin()
         # The whole shot (arcs, bounces, splits, bomblets...) is decided once, on a fixed 20ms grid, so every LAN machine
         # produces the exact same events no matter its frame rate; the screen just animates the planned flights.
-        self.flights = [LiveFlight(s, tank.index) for s in plan_shot(w, tank)]
+        self.special_shot = self.session.config.special and tank.charge >= 2
+        if self.special_shot:
+            tank.charge = 0
+            self.floaters.append(FloatText(tank.x, tank.y + tank.height + 8, "SPECIAL ATTACK!", GOLD))
+        self.flights = [LiveFlight(s, tank.index) for s in plan_shot(w, tank, self.special_shot)]
         self.pending = []
         self.proj = self.flights[0].proj if self.flights else None
         net = self.session.config.net
@@ -6552,7 +7562,8 @@ class BattleScene(Scene):
         if math.hypot(x - f.last[0], y - f.last[1]) >= 1.0:
             f.last = (x, y)
             f.n += 1
-            self.world.fx.trail(x, y, self.current.shot_color, self.current.ammo, f.n, self.app.time)
+            for k in range(3 if self.special_shot else 1):
+                self.world.fx.trail(x + (k - 1) * 1.5, y + (k - 1), self.current.shot_color, self.current.ammo, f.n + k, self.app.time)
 
     def _start_event(self, ev: Ev) -> None:
         w, shooter = self.world, self.current
@@ -6590,11 +7601,14 @@ class BattleScene(Scene):
             self.flags.add("boom")
             w.explosions.append(Explosion(imp.x, imp.y, max(2.0, R), shooter.shot_color, style=shooter.ammo.boom))
             if self._fx_on() and ev.radius >= 0.5:
-                self.shake.kick(1.6 * min(1.4, ev.radius))
+                self.shake.kick(5.0 if ev.big else 1.6 * min(1.4, ev.radius))
             self.app.feedback.emit("explosion")
         if self.t >= 0.06 and "burst" not in self.flags:
             self.flags.add("burst")
-            w.fx.impact(imp.x, imp.y, shooter.shot_color, w.mapdef.theme.soil, min(1.4, 0.4 + 0.6 * ev.radius), ammo=shooter.ammo)
+            w.fx.impact(imp.x, imp.y, shooter.shot_color, w.mapdef.theme.soil, 2.6 if ev.big else min(1.4, 0.4 + 0.6 * ev.radius), ammo=shooter.ammo)
+            if ev.big:                                               # the special: two more rings of the ammo's own blast
+                for k, sc in enumerate((1.5, 2.1)):
+                    w.explosions.append(Explosion(imp.x, imp.y, R * sc, mix(shooter.shot_color, (255, 255, 255), 0.3 * k), style=shooter.ammo.boom))
         if self.t >= 0.28 and "carve" not in self.flags:
             self.flags.add("carve")
             if ev.mode != "fx":
@@ -6610,7 +7624,7 @@ class BattleScene(Scene):
                     dmg = 0
                 v.hp -= dmg
                 v.hurt = 0.6
-                txt = "SHIELD ABSORBED" if dmg == 0 else (f"DIRECT HIT -{dmg}" if direct else f"HIT -{dmg}")
+                txt = ("SHIELDED - KILL THE DRONES" if v.guard else "SHIELD ABSORBED") if dmg == 0 else (f"DIRECT HIT -{dmg}" if direct else f"HIT -{dmg}")
                 self.floaters.append(FloatText(v.x, v.y + v.height + 6, txt, Palette.AMBER if dmg == 0 else Palette.DANGER))
                 if self._fx_on():
                     self.shake.kick(2.6 if dmg else 1.0)
@@ -6679,7 +7693,9 @@ class BattleScene(Scene):
         if self.phase is not Phase.AIMING or self._control(self.current) != "local":
             return
         t, step = self.current, COARSE_STEP if ev.coarse else 1
-        if ev.action is Action.LEFT:
+        if ev.raw in ("x", "X") and self.session.config.special:
+            self._forfeit(t)
+        elif ev.action is Action.LEFT:
             t.angle = clamp(t.angle + step, 2, 178)
         elif ev.action is Action.RIGHT:
             t.angle = clamp(t.angle - step, 2, 178)
@@ -6689,6 +7705,18 @@ class BattleScene(Scene):
             t.power = clamp(t.power - step, PHYS.min_power, PHYS.max_power)
         elif ev.confirm:
             self._fire()
+
+    def _forfeit(self, tank: Tank, announce: bool = True) -> None:
+        """Special attack charging: give up this turn to bank one charge (two charges make your next shot the special)."""
+        if tank.charge >= 2:
+            self.floaters.append(FloatText(tank.x, tank.y + tank.height + 8, "SPECIAL ALREADY READY - FIRE!", Palette.AMBER))
+            return
+        tank.charge += 1
+        self.floaters.append(FloatText(tank.x, tank.y + tank.height + 8, "SPECIAL READY!" if tank.charge >= 2 else f"CHARGING {tank.charge}/2", GOLD))
+        net = self.session.config.net
+        if net is not None and announce:
+            net.send({"t": "skip", "i": tank.index})
+        self._end_turn()
 
     # -- LAN -------------------------------------------------------------------
     def _net_tick(self, dt: float) -> None:
@@ -6713,7 +7741,7 @@ class BattleScene(Scene):
                 net.send({"t": "aim", "i": cur.index, "a": cur.angle, "p": cur.power})
         if self.phase is Phase.AIMING and ctl == "remote":
             while True:
-                m = net.peek("aim", "fire")
+                m = net.peek("aim", "fire", "skip")
                 if m is None:
                     break
                 if m.get("i") != cur.index:
@@ -6722,6 +7750,9 @@ class BattleScene(Scene):
                         continue
                     break
                 net.drop(m)
+                if m["t"] == "skip":
+                    self._forfeit(cur, announce=False)
+                    break
                 cur.angle = clamp(float(m["a"]), 2, 178)
                 cur.power = clamp(float(m["p"]), PHYS.min_power, PHYS.max_power)
                 if m["t"] == "fire":
@@ -6745,9 +7776,21 @@ class BattleScene(Scene):
             if self.banner.age >= self.banner.life:
                 self.banner = None
 
+    def _refresh_guards(self) -> None:
+        """A guarded tank (the Mothership) keeps its shield up while any teammate lives; it drops for good once they are all down."""
+        for t in self.world.tanks:
+            if t.guard and t.alive:
+                if any(o.alive and o is not t and o.team == t.team for o in self.world.tanks):
+                    t.shield = max(t.shield, 2)
+                else:
+                    t.guard, t.shield = False, 0
+                    self.floaters.append(FloatText(t.x, t.y + t.height + 8, "SHIELD DOWN!", (140, 230, 255)))
+
     def update(self, dt: float) -> None:
         self._check_resize()
         self._net_tick(dt)
+        if self.world is not None:
+            self._refresh_guards()
         sdt = dt * self.app.settings.anim_speed
         w = self.world
         w.update_effects(sdt)
@@ -6833,7 +7876,16 @@ class BattleScene(Scene):
                     canvas.plot(int(x) + dx, w.height - 1, col)
             else:
                 pr, lc = f.proj, f.proj.launch
-                draw_projectile(canvas, x, y, lc.vx + lc.ax * pr.t, lc.vy - lc.g * pr.t, col, self.current.ammo, self.app.time)
+                vx, vy = lc.vx + lc.ax * pr.t, lc.vy - lc.g * pr.t
+                if self.special_shot:                      # scaled-up: a pulsing halo and three orbiting copies of the ammo's shell
+                    tt, sp = self.app.time, math.hypot(vx, vy) or 1.0
+                    for k in range(26):
+                        a = k / 26 * math.tau + tt * 6
+                        canvas.blendf(x + math.cos(a) * (5 + math.sin(tt * 9)), y + math.sin(a) * (5 + math.sin(tt * 9)), col, 0.55)
+                    for k in range(3):
+                        a = tt * 7 + k * math.tau / 3
+                        draw_projectile(canvas, x + math.cos(a) * 3.2, y + math.sin(a) * 3.2, vx, vy, col, self.current.ammo, tt)
+                draw_projectile(canvas, x, y, vx, vy, col, self.current.ammo, self.app.time)
         for e in w.explosions:
             e.draw(canvas)
         screen.blit(canvas, L.fx, L.fy, self.shake.offset(w.rng, self._fx_on()))
@@ -6905,12 +7957,16 @@ class BattleScene(Scene):
                 if side == 0:
                     screen.text(1, row, "▌", t.color, Palette.PANEL)
                     screen.text(3, row, nm, t.color, Palette.PANEL)
-                    draw_hp(screen, 4 + len(nm), row, t, Palette.PANEL)
+                    wd = draw_hp(screen, 4 + len(nm), row, t, Palette.PANEL)
+                    if s.config.special:
+                        screen.text(5 + len(nm) + wd, row, "✦" * t.charge + "·" * (2 - t.charge), GOLD if t.charge >= 2 else Palette.MUTED, Palette.PANEL)
                 else:
                     x = cols - 2
                     screen.text(x, row, "▐", t.color, Palette.PANEL)
                     screen.text(x - 1 - len(nm), row, nm, t.color, Palette.PANEL)
-                    draw_hp(screen, x - 3 - len(nm), row, t, Palette.PANEL, True)
+                    wd = draw_hp(screen, x - 3 - len(nm), row, t, Palette.PANEL, True)
+                    if s.config.special:
+                        screen.text(x - 5 - len(nm) - wd, row, "✦" * t.charge + "·" * (2 - t.charge), GOLD if t.charge >= 2 else Palette.MUTED, Palette.PANEL)
             if len(members) == 1:
                 if side == 0:
                     screen.text(3, top + 1, wins_text, Palette.MUTED, Palette.PANEL)
@@ -6965,8 +8021,10 @@ class BattleScene(Scene):
         if self.phase is Phase.AI_THINKING:
             screen.text(2, by + 2, "AI FIRE CONTROL: " + self.plan.status, Palette.AMBER, Palette.PANEL)
         else:
-            draw_keycaps(screen, 2, by + 2, (("A/D", "AIM"), ("W/S", "POWER"), ("SHIFT", "COARSE"), ("SPACE", "FIRE"),
-                                              ("ESC", "PAUSE")), Palette.PANEL)
+            caps = [("A/D", "AIM"), ("W/S", "POWER"), ("SHIFT", "COARSE"), ("SPACE", "FIRE")]
+            if self.session.config.special:
+                caps.append(("X", "CHARGE"))
+            draw_keycaps(screen, 2, by + 2, tuple(caps + [("ESC", "MENU")]), Palette.PANEL)
         wmax, wind = self.cfg_settings.wind, self.world.wind
         if wmax <= 0:
             wt, wc = "WIND OFF", Palette.MUTED
@@ -6978,6 +8036,36 @@ class BattleScene(Scene):
         screen.text(cols - 2 - len(wt), by + 2, wt, wc, Palette.PANEL)
 
 
+class ConfirmLeaveScene(Scene):
+    """'Leave this match?' - makes the consequence clear before anything is closed or discarded."""
+    overlay = True
+    show_wallet = False
+
+    def __init__(self, app, session: "MatchSession") -> None:
+        super().__init__(app)
+        self.session = session
+        self.net = session.config.net
+
+    def handle(self, ev: InputEvent) -> None:
+        if ev.action is Action.BACK or ev.raw in ("n", "N"):
+            self.app.pop()
+        elif ev.confirm or ev.raw in ("y", "Y"):
+            if self.net is not None:                           # tell the other player, then release the socket
+                self.net.send({"t": "quit"})
+                self.net.close()
+            self.app.save.flush()
+            self.app.goto(self.session.exit_scene(self.app))
+
+    def draw(self, screen: Screen) -> None:
+        screen.dim(0.55)
+        s = self.session
+        x, y = panel(screen, 52, 10, "LEAVE THE MATCH?", fg=Palette.DANGER)
+        line = ("The other player will be told you left." if self.net else "This match will end and its progress is lost.")
+        screen.center(y + 2, line, Palette.TEXT, Palette.PANEL, x, 52)
+        screen.center(y + 3, f"You return to {s.exit_label if s.exit_label != 'MENU' else 'the menu'}.", Palette.MUTED, Palette.PANEL, x, 52)
+        screen.center(y + 6, "[ENTER] LEAVE      [ESC] KEEP PLAYING", Palette.AMBER, Palette.PANEL, x, 52)
+
+
 class PauseScene(Scene):
     overlay = True
     show_wallet = False
@@ -6986,30 +8074,29 @@ class PauseScene(Scene):
         super().__init__(app)
         self.battle = battle
         self.net = battle.session.config.net
-        self.menu = MenuList(["RESUME", "LEAVE MATCH"] if self.net else ["RESUME", "RESTART", battle.session.exit_label])
+        self.menu = MenuList(["RESUME", "EXIT MATCH"] if self.net else ["RESUME", "RESTART", "EXIT MATCH"])
 
     def handle(self, ev: InputEvent) -> None:
         if ev.action in (Action.BACK, Action.PAUSE):
             self.app.pop()
             return
         c = self.menu.handle(ev)
-        session = self.battle.session
-        if c == 0:
+        if c is None:
+            return
+        label = self.menu.items[c]
+        if label == "RESUME":
             self.app.pop()
-        elif self.net and c == 1:                       # the match keeps running for the other player: leaving forfeits it
-            self.net.send({"t": "quit"})
-            self.net.close()
-            self.app.goto(session.exit_scene(self.app))
-        elif c == 1:
-            session.restart(self.app)
-        elif c == 2:
-            self.app.goto(session.exit_scene(self.app))
+        elif label == "RESTART":
+            self.battle.session.restart(self.app)
+        else:
+            self.app.push(ConfirmLeaveScene(self.app, self.battle.session))
 
     def draw(self, screen: Screen) -> None:
         screen.dim(0.45)
-        x, y = panel(screen, 30, 9, "PAUSED")
-        self.menu.draw(screen, screen.cols // 2, y + 3, self.app.time, gap=1, width=22)
-        screen.center(y + 7, "ESC  RESUME", Palette.MUTED, Palette.PANEL, x, 30)
+        x, y = panel(screen, 34, 9, "MATCH MENU")
+        self.menu.draw(screen, screen.cols // 2, y + 3, self.app.time, gap=1, width=24)
+        if self.net:
+            screen.center(y + 7, "The match keeps running for the other player.", Palette.MUTED, Palette.PANEL, x, 34)
 
 
 class RoundResultScene(Scene):
@@ -7046,6 +8133,9 @@ class RoundResultScene(Scene):
                 self._proceed()
 
     def handle(self, ev: InputEvent) -> None:
+        if ev.action is Action.BACK and self.session.config.mode in ("two", "lan"):
+            self.app.push(ConfirmLeaveScene(self.app, self.session))
+            return
         if ev.action is Action.CONFIRM or ev.action is Action.FIRE:
             if self.net is None:
                 self._proceed()
@@ -7079,12 +8169,16 @@ HP_PRESETS = (1, 3, 5, 7, 10, 0)
 
 @dataclass
 class Rules:
-    """Two Player / LAN match rules: BEST OF n or FIRST TO n rounds, and the hearts each tank starts with."""
+    """Two Player / LAN match rules: BEST OF or FIRST TO n rounds, hearts, the battlefield, wind and the special attack."""
     fmt: str = "best"                     # "best" | "first"
     n_idx: int = 0
     n_custom: int = 4
     hp_idx: int = 1
     hp_custom: int = 4
+    map_key: str = ""                     # "" = random battlefield
+    wind: bool = True
+    special: bool = False
+    ammo_fx: bool = True                  # special ammo effects ON/OFF
 
     @property
     def n(self) -> int:
@@ -7103,42 +8197,70 @@ class Rules:
     def label(self) -> str:
         return f"{'BEST OF' if self.fmt == 'best' else 'FIRST TO'} {self.n}"
 
+    @property
+    def mapdef(self) -> Optional[MapDefinition]:
+        return all_maps().get(self.map_key)
+
+    def wind_value(self, settings: "Settings") -> float:
+        """Wind strength for this match: your Settings strength when ON (a medium default if that is OFF), 0 when OFF."""
+        return 0.0 if not self.wind else (settings.wind if settings.wind > 0 else 5.0)
+
+    def summary(self) -> str:
+        m = self.mapdef.name if self.mapdef else "RANDOM MAP"
+        return f"{self.label} · {self.hp} HP · {m} · WIND {'ON' if self.wind else 'OFF'}" + (" · SPECIAL" if self.special else "") + ("" if self.ammo_fx else " · AMMO FX OFF")
+
     def dump(self) -> str:
-        return f"{self.fmt},{self.n_idx},{self.n_custom},{self.hp_idx},{self.hp_custom}"
+        return f"{self.fmt},{self.n_idx},{self.n_custom},{self.hp_idx},{self.hp_custom},{self.map_key},{int(self.wind)},{int(self.special)},{int(self.ammo_fx)}"
 
     @classmethod
     def load(cls, text: str) -> "Rules":
         try:
-            f, a, b, c, d = text.split(",")
+            parts = text.split(",")
+            f, a, b, c, d = parts[:5]                         # older saves only had the first five fields
             r = cls(f if f in ("best", "first") else "best", int(a), int(b), int(c), int(d))
+            if len(parts) >= 8:
+                r.map_key, r.wind, r.special = parts[5], parts[6] == "1", parts[7] == "1"
+            if len(parts) >= 9:
+                r.ammo_fx = parts[8] == "1"
             if not (0 <= r.n_idx < len(ROUND_PRESETS) and 0 <= r.hp_idx < len(HP_PRESETS)):
                 raise ValueError
-            r.n_custom, r.hp_custom = clamp(r.n_custom, 1, 25), clamp(r.hp_custom, 1, 50)
+            r.n_custom, r.hp_custom = int(clamp(r.n_custom, 1, 25)), int(clamp(r.hp_custom, 1, 50))
+            if r.map_key and r.map_key not in all_maps():
+                r.map_key = ""
             return r
         except ValueError:
             return cls()
 
 
-class RulesScene(BackdropScene):
-    """Pick BEST OF / FIRST TO, how many rounds and how many hearts. Remembered between sessions."""
+def all_maps() -> dict:
+    return {m.key: m for m in MAPS + SPECIAL_MAPS}
 
-    def __init__(self, app, title: str, on_done: Callable) -> None:
+
+class RulesScene(BackdropScene):
+    """Pick BEST OF / FIRST TO, rounds, hearts, the battlefield (live terrain scan), WIND, SPECIAL AMMO and the special attack. Remembered."""
+
+    def __init__(self, app, title: str, on_done: Callable, kind: str = "two") -> None:
         super().__init__(app)
-        self.title, self.on_done = title, on_done
+        self.title, self.on_done, self.kind = title, on_done, kind
         self.rules = Rules.load(app.save.settings.get("rules", ""))
         self.row = 0
+        self.maps = [None] + list(MAPS) + app.save.unlocked_maps()           # None = RANDOM
+        self.cache: dict = {}
 
     def keys(self) -> list:
         r = self.rules
         k = ["fmt", "n"] + (["n_custom"] if ROUND_PRESETS[r.n_idx] == 0 else [])
         k += ["hp"] + (["hp_custom"] if HP_PRESETS[r.hp_idx] == 0 else [])
-        return k + ["go"]
+        return k + ["map", "wind", "ammo", "special", "go"]
+
+    def _map_index(self) -> int:
+        return next((i for i, m in enumerate(self.maps) if m is not None and m.key == self.rules.map_key), 0)
 
     def handle(self, ev: InputEvent) -> None:
         keys, r = self.keys(), self.rules
         self.row = min(self.row, len(keys) - 1)
         if ev.action is Action.BACK:
-            self.app.goto(MenuScene(self.app))
+            self.app.goto(LanMenuScene(self.app) if self.kind == "lan" else MenuScene(self.app))
         elif ev.action is Action.UP:
             self.row = (self.row - 1) % len(keys)
         elif ev.action is Action.DOWN:
@@ -7156,6 +8278,15 @@ class RulesScene(BackdropScene):
                 r.n_custom = int(clamp(r.n_custom + step, 1, 25))
             elif k == "hp_custom":
                 r.hp_custom = int(clamp(r.hp_custom + step, 1, 50))
+            elif k == "map":
+                m = self.maps[(self._map_index() + step) % len(self.maps)]
+                r.map_key = m.key if m else ""
+            elif k == "wind":
+                r.wind = not r.wind
+            elif k == "ammo":
+                r.ammo_fx = not r.ammo_fx
+            elif k == "special":
+                r.special = not r.special
         elif ev.confirm:
             self.app.save.settings["rules"] = r.dump()
             self.app.save.flush()
@@ -7163,24 +8294,51 @@ class RulesScene(BackdropScene):
 
     def draw(self, screen: Screen) -> None:
         super().draw(screen)
-        r, keys = self.rules, self.keys()
+        r, keys, t = self.rules, self.keys(), self.app.time
         self.row = min(self.row, len(keys) - 1)
-        x, y = panel(screen, 62, 8 + len(keys) * 2, self.title)
-        names = {"fmt": "FORMAT", "n": "ROUNDS", "n_custom": "  CUSTOM ROUNDS", "hp": "HEALTH", "hp_custom": "  CUSTOM HEALTH", "go": "CONTINUE"}
+        PW, VW = 50, 44
+        sp = 2 if 9 + len(keys) * 2 <= screen.rows - 1 else 1
+        H = max(22, 9 + len(keys) * sp)
+        x, y = (screen.cols - (PW + 1 + VW)) // 2, max(0, (screen.rows - H) // 2)
+        screen.box(x, y, PW, H, "double", Palette.LINE, Palette.PANEL, self.title)
+        names = {"fmt": "FORMAT", "n": "ROUNDS", "n_custom": "  CUSTOM ROUNDS", "hp": "HEALTH", "hp_custom": "  CUSTOM HEALTH",
+                 "map": "BATTLEFIELD", "wind": "WIND", "ammo": "SPECIAL AMMO", "special": "SPECIAL ATTACK", "go": "CONTINUE"}
+        mp = self.maps[self._map_index()]
         for i, k in enumerate(keys):
-            ry, sel = y + 2 + i * 2, i == self.row
+            ry, sel = y + 2 + i * sp, i == self.row
             bg = Palette.PANEL_HI if sel else Palette.PANEL
-            screen.fill(x + 2, ry, 58, 1, bg)
+            screen.fill(x + 2, ry, PW - 4, 1, bg)
             screen.text(x + 4, ry, names[k], Palette.WHITE if sel else Palette.MUTED, bg)
             val = {"fmt": "BEST OF" if r.fmt == "best" else "FIRST TO", "n": str(r.n) if ROUND_PRESETS[r.n_idx] else "CUSTOM",
                    "n_custom": str(r.n_custom), "hp": str(r.hp) if HP_PRESETS[r.hp_idx] else "CUSTOM",
-                   "hp_custom": str(r.hp_custom), "go": "▶"}[k]
-            val = f"◄ {val} ►" if sel and k != "go" else val
-            screen.text(x + 58 - len(val), ry, val, GOLD if sel else Palette.TEXT, bg)
-        by = y + 3 + len(keys) * 2
-        screen.center(by, f"{r.label}  ·  {r.hp} {'HEART' if r.hp == 1 else 'HEARTS'} EACH", Palette.AMBER, Palette.PANEL, x, 62)
-        screen.center(by + 1, f"A side wins the match with {r.target} round wins", Palette.MUTED, Palette.PANEL, x, 62)
-        draw_keycaps(screen, x + 6, y + 6 + len(keys) * 2, (("W/S", "ROW"), ("A/D", "CHANGE"), ("SHIFT", "x5"), ("ENTER", "OK")), Palette.PANEL)
+                   "hp_custom": str(r.hp_custom), "map": mp.name if mp else "RANDOM", "wind": "ON" if r.wind else "OFF",
+                   "ammo": "ON" if r.ammo_fx else "OFF", "special": "ON" if r.special else "OFF", "go": "▶"}[k]
+            val = f"◄ {val[:22]} ►" if sel and k != "go" else val[:26]
+            screen.text(x + PW - 4 - len(val), ry, val, GOLD if sel else Palette.TEXT, bg)
+        screen.center(y + H - 6, f"{r.label}  ·  {r.hp} {'HEART' if r.hp == 1 else 'HEARTS'} EACH  ·  WIND {'ON' if r.wind else 'OFF'}",
+                      Palette.AMBER, Palette.PANEL, x, PW)
+        extra = ("SPECIAL: press X to forfeit a turn; after two, next shot deals 3" if r.special
+                 else f"A side wins the match with {r.target} round wins")
+        screen.center(y + H - 5, extra[:PW - 2], Palette.MUTED, Palette.PANEL, x, PW)
+        screen.center(y + H - 4, "SPECIAL AMMO ON: ammo effects active" if r.ammo_fx else "SPECIAL AMMO OFF: all ammo is cosmetic",
+                      Palette.PRIMARY if r.ammo_fx else Palette.MUTED, Palette.PANEL, x, PW)
+        draw_keycaps(screen, x + 3, y + H - 2, (("W/S", "ROW"), ("A/D", "CHANGE"), ("SHIFT", "x5"), ("ENTER", "OK")), Palette.PANEL)
+        # live terrain scan
+        vx = x + PW + 1
+        screen.box(vx, y, VW, H, "double", Palette.LINE, Palette.PANEL, "TERRAIN SCAN")
+        m = mp or MAPS[int(t / 1.2) % len(MAPS)]
+        pl = []
+        for i in range(2):
+            lo = self.app.save.loadout(i)
+            pl.append((DESIGN_BY_KEY.get(lo.tank, DESIGNS[0]), COLOR_BY_NAME[lo.tank_color]))
+        screen.blit(render_map_preview(self.cache, m, VW - 4, 24, t, pl), vx + 2, y + 2)
+        screen.center(y + 14, m.name if mp else "RANDOM", m.accent if (mp and m.special) else Palette.AMBER, Palette.PANEL, vx, VW)
+        desc = m.description if mp else "A fresh battlefield every round."
+        n = wrap_center(screen, y + 15, desc, VW - 4, Palette.TEXT, Palette.PANEL, vx, VW, 3)
+        if mp:
+            dots = lambda k: "●" * k + "○" * (3 - k)
+            screen.center(y + 15 + n + 1, f"COVER {dots(m.cover)}     RELIEF {dots(m.relief)}", Palette.PRIMARY, Palette.PANEL, vx, VW)
+        screen.center(y + H - 2, "Opening map only - later rounds rotate", Palette.MUTED, Palette.PANEL, vx, VW)
 
 
 def field_size(cols: int, rows: int) -> tuple:
@@ -7406,8 +8564,17 @@ class Connector:
         return None
 
 
+def _custom_rec_for(key: str) -> Optional[dict]:
+    d = CUSTOM_DESIGNS.get(key)
+    return None if d is None else {"id": key[7:], "name": d.name, "lore": d.blurb, "fmt": CUSTOM_FMT,
+                                   "parts": dict(zip(("turret", "hull", "track"), d.parts), barrel=d.barrel, glow=d.glow, ambient=d.ambient,
+                                                  accent=next((n for n, c in COLOR_CHOICES if c == d.accent), "WHITE"))}
+
+
 def player_to_json(p: PlayerSetup) -> dict:
     d = dict(vars(p))
+    if p.design.startswith("custom:"):
+        d["custom_rec"] = _custom_rec_for(p.design)
     d["tank_color"], d["shot_color"] = list(p.tank_color), list(p.shot_color)
     d["diff"] = p.diff.name if p.diff else None
     return d
@@ -7415,18 +8582,27 @@ def player_to_json(p: PlayerSetup) -> dict:
 
 def player_from_json(d: dict) -> PlayerSetup:
     d = dict(d)
+    if isinstance(d.get("custom_rec"), dict):
+        register_custom(d["custom_rec"])                           # the peer's own tank design, usable for this match only
+    if d.get("design") not in DESIGN_BY_KEY:
+        d["design"] = "ranger"
     d["tank_color"], d["shot_color"] = tuple(d["tank_color"]), tuple(d["shot_color"])
     d["diff"] = Difficulty[d["diff"]] if d.get("diff") else None
     return PlayerSetup(**{k: v for k, v in d.items() if k in PlayerSetup.__dataclass_fields__})
 
 
 def loadout_json(lo: Loadout) -> dict:
-    return dict(vars(lo))
+    d = dict(vars(lo))
+    if lo.tank.startswith("custom:"):
+        d["custom_rec"] = _custom_rec_for(lo.tank)
+    return d
 
 
 def loadout_from_json(d: dict, save: "SaveData", owner: int) -> Loadout:
     """Accepts the peer's loadout but never trusts it blindly (unknown kits fall back to the starters)."""
     lo = Loadout()
+    if isinstance(d.get("custom_rec"), dict):
+        register_custom(d["custom_rec"])
     if d.get("tank") in DESIGN_BY_KEY:
         lo.tank = d["tank"]
     if d.get("ammo") in AMMO_BY_KEY:
@@ -7479,7 +8655,7 @@ class LanMenuScene(BackdropScene):
         c = self.menu.handle(ev)
         app = self.app
         if c == 0:
-            app.goto(RulesScene(app, "LAN MATCH RULES", lambda r: app.goto(LanHostScene(app, r))))
+            app.goto(RulesScene(app, "LAN MATCH RULES", lambda r: app.goto(LanHostScene(app, r)), kind="lan"))
         elif c == 1:
             app.goto(LanJoinScene(app))
         elif c == 2:
@@ -7526,7 +8702,7 @@ class LanHostScene(BackdropScene):
             for m in self.link.take("hello"):
                 self.guest = loadout_from_json(m.get("lo", {}), self.app.save, 1)
                 self.guest_term = tuple(m.get("term", (80, 24)))
-                self.link.send({"t": "welcome", "rules": self.rules.label + f" - {self.rules.hp} HP" if self.rules else self.title})
+                self.link.send({"t": "welcome", "rules": self.rules.summary() if self.rules else self.title})
             if self.link.dead:
                 self.link, self.guest = None, None
 
@@ -7550,12 +8726,13 @@ class LanHostScene(BackdropScene):
         mine = field_size(app.screen.cols, app.screen.rows)
         world = (min(mine[0], self.guest_term[0]), min(mine[1], self.guest_term[1]))
         seed = app.rng.randrange(1 << 30)
+        wind = r.wind_value(app.settings)
         cfg = MatchConfig(players, False, app.settings.difficulty, "lan", target=r.target, label=r.label, net=link, my_owner=0,
-                          world_size=world)
+                          world_size=world, special=r.special, ammo_fx=r.ammo_fx)
         link.send({"t": "start", "kind": "versus", "players": [player_to_json(p) for p in players], "target": r.target,
-                   "label": r.label, "seed": seed, "world": list(world), "wind": app.settings.wind})
-        session = MatchSession(cfg, None, seed)
-        session.wind_override = app.settings.wind
+                   "label": r.label, "seed": seed, "world": list(world), "wind": wind, "map": r.map_key, "special": r.special, "ammo_fx": r.ammo_fx})
+        session = MatchSession(cfg, r.mapdef, seed)
+        session.wind_override = wind
         app.goto(BattleScene(app, session))
 
     def draw(self, screen: Screen) -> None:
@@ -7660,8 +8837,8 @@ class LanJoinScene(BackdropScene):
             return
         world = tuple(m["world"])
         cfg = MatchConfig(players, False, app.settings.difficulty, "lan", target=int(m["target"]), label=str(m["label"]), net=link,
-                          my_owner=1, world_size=world)
-        session = MatchSession(cfg, None, int(m["seed"]))
+                          my_owner=1, world_size=world, special=bool(m.get("special", False)), ammo_fx=bool(m.get("ammo_fx", True)))
+        session = MatchSession(cfg, all_maps().get(str(m.get("map", ""))), int(m["seed"]))
         session.wind_override = float(m["wind"])
         app.goto(BattleScene(app, session))
 
@@ -7943,6 +9120,7 @@ class ShopScene(BackdropScene):
         super().__init__(app)
         self.page = page
         self.pos = {p: (0, 0) for p in range(len(SHOP_PAGES))}
+        self.scroll: dict = {}
         self.pending = False
         self.msg, self.msg_ok, self.msg_t = "", True, 0.0
         self.stage = PreviewStage(app.settings, 34, 20, 1)
@@ -7950,8 +9128,27 @@ class ShopScene(BackdropScene):
 
     # -- data ----------------------------------------------------------------
     def grid(self) -> list:
+        """Rows of up to five items; a row never mixes tiers, so each row has exactly one colour."""
         its = [i for i in SHOP_ITEMS if i.page == self.page]
-        return [[i for i in its if i.tier == t] for t in sorted({i.tier for i in its})]
+        rows: list = []
+        for t in sorted({i.tier for i in its}):
+            tier_items = [i for i in its if i.tier == t]
+            rows += [tier_items[k:k + 5] for k in range(0, len(tier_items), 5)]
+        return rows
+
+    def _view_rows(self, screen_rows: int) -> tuple:
+        """(panel height, rows visible at once) for this terminal; the grid scrolls when there are more rows than that."""
+        ph = max(21, min(41, screen_rows - 8))
+        return ph, max(1, (ph - 3) // 4)
+
+    def _fit(self, vis: int) -> None:
+        r = min(self.pos[self.page][0], len(self.grid()) - 1)
+        top = self.scroll.get(self.page, 0)
+        if r < top:
+            top = r
+        elif r >= top + vis:
+            top = r - vis + 1
+        self.scroll[self.page] = max(0, min(top, max(0, len(self.grid()) - vis)))
 
     @property
     def item(self) -> ShopItem:
@@ -7984,11 +9181,14 @@ class ShopScene(BackdropScene):
                 c = max(0, c - 1)
             elif ev.action is Action.RIGHT:
                 c = min(len(g[r]) - 1, c + 1)
-            elif ev.action is Action.UP:
-                r = max(0, r - 1)
             else:
-                r = min(len(g) - 1, r + 1)
+                jump = self._view_rows(self.app.screen.rows)[1] if ev.coarse else 1      # SHIFT+W/S pages through the rows
+                r = max(0, r - jump) if ev.action is Action.UP else min(len(g) - 1, r + jump)
             self.pos[self.page] = (r, min(c, len(g[r]) - 1))
+            self._fit(self._view_rows(self.app.screen.rows)[1])
+            return
+        if ev.confirm and self.item.uid == "ticket":
+            self._ticket()
             return
         if ev.confirm:
             it, save = self.item, self.app.save
@@ -8006,6 +9206,22 @@ class ShopScene(BackdropScene):
                 if not why:
                     self.app._wallet_flash = 1.4
 
+    def _ticket(self) -> None:
+        save, it = self.app.save, self.item
+        if save.tickets_sold_out():
+            self.msg, self.msg_ok, self.msg_t = "SOLD OUT - EVERY BOSS IS DEFEATED", False, 2.5
+        elif save.ticket_active:                              # a drawn boss is waiting: no new charge
+            start_ticket(self.app, save.ticket_active)
+        elif save.shortfall(it):
+            self.pending = False
+            self.msg, self.msg_ok, self.msg_t = save.shortfall(it), False, 2.5
+        elif not self.pending:
+            self.pending = True
+        else:
+            self.pending = False
+            self.app._wallet_flash = 1.4
+            start_ticket(self.app, save.buy_ticket(it))
+
     def update(self, dt: float) -> None:
         super().update(dt)
         self.stage.update(dt)
@@ -8019,7 +9235,7 @@ class ShopScene(BackdropScene):
             tanks = []
             for i in range(2):
                 x = int(m.spawns[i] * 34)
-                terrain.flatten(x + 0.5, 5)
+                terrain.flatten(x + 0.5, 10)
                 tanks.append(x + 0.5)
             scen = Scenery(34, 20, m.theme, rng)
             scen.apply_terrain(terrain)
@@ -8040,6 +9256,8 @@ class ShopScene(BackdropScene):
         design, ammo = DESIGN_BY_KEY["ranger"], AMMO_BY_KEY["standard"]
         hull, shot = COLOR_BY_NAME["CYAN"], COLOR_BY_NAME["YELLOW"]
         kind, _, key = it.uid.partition(":")
+        if it.uid == "ticket":
+            return ticket_art(self.app.save, self.app.time)
         if kind == "map":
             return self._map_preview(SPECIAL_MAP_BY_KEY[key])
         if kind == "theme":
@@ -8059,12 +9277,13 @@ class ShopScene(BackdropScene):
     def _price(self, it: ShopItem) -> str:
         return f"{it.coins}◉" + (f" {it.credits}◈" if it.credits else "")
 
-    KIND = {"tank": "TANK", "ammo": "AMMO", "map": "MAP", "theme": "MAIN SCREEN", "rgb": "EXTRA"}
+    KIND = {"tank": "TANK", "ammo": "AMMO", "map": "MAP", "theme": "MAIN SCREEN", "rgb": "EXTRA", "ticket": "TICKET"}
 
     def draw(self, screen: Screen) -> None:
         super().draw(screen)
         save, t, W = self.app.save, self.app.time, self.W
-        x0, y0 = (screen.cols - W) // 2, max(1, (screen.rows - 24) // 2)
+        ph, vis = self._view_rows(screen.rows)
+        x0, y0 = (screen.cols - W) // 2, max(1, (screen.rows - ph - 3) // 2)
         screen.text(x0 + 1, y0, "S H O P", GOLD)
         tx = x0 + 14
         for i, name in enumerate(SHOP_PAGES):
@@ -8073,14 +9292,22 @@ class ShopScene(BackdropScene):
             screen.text(tx, y0, lab, Palette.INK if sel else Palette.MUTED, GOLD if sel else Palette.PANEL)
             tx += len(lab) + 1
         screen.fill(x0, y0 + 1, W, 1, Palette.BG, "─", Palette.LINE)
-        # item grid: rows are tier-coloured (cheapest at the top); the colour alone tells you the tier
-        screen.box(x0, y0 + 2, 57, 21, "double", Palette.LINE, Palette.PANEL, SHOP_PAGES[self.page])
+        grid = self.grid()
+        self._fit(vis)
+        top = self.scroll.get(self.page, 0)
         sel_r, sel_c = self.pos[self.page]
-        for r, row in enumerate(self.grid()):
+        sel_r = min(sel_r, len(grid) - 1)
+        title = SHOP_PAGES[self.page] + (f"  ·  ROW {sel_r + 1}/{len(grid)}" if len(grid) > vis else "")
+        screen.box(x0, y0 + 2, 57, ph, "double", Palette.LINE, Palette.PANEL, title)
+        for k in range(vis):                                  # the visible window of rows; tier colour alone marks the tier
+            r = top + k
+            if r >= len(grid):
+                break
+            row, gy = grid[r], y0 + 4 + k * 4
             col = TIER_COLORS[row[0].tier]
-            gy = y0 + 4 + r * 4
             for dy in (0, 1):
-                screen.put(x0 + 1, gy + dy, "▌", col, Palette.PANEL)
+                bar = rainbow(t + r * 0.1 + dy * 0.05) if row[0].tier >= 4 else col      # the premium rows shimmer
+                screen.put(x0 + 1, gy + dy, "▌", bar, Palette.PANEL)
             for c, it in enumerate(row):
                 x = x0 + 2 + c * (self.CW + self.GAP)
                 sel = (r, c) == (sel_r, sel_c)
@@ -8089,7 +9316,9 @@ class ShopScene(BackdropScene):
                 screen.fill(x, gy, self.CW, 2, bg)
                 name = it.name if len(it.name) <= self.CW else it.name[:self.CW - 1] + "…"
                 screen.text(x, gy, name, Palette.WHITE if sel else (Palette.OK if owned else col), bg)
-                if owned:
+                if it.uid == "ticket":
+                    price, pc = ("SOLD OUT", Palette.MUTED) if owned else (("RESUME" if save.ticket_active else self._price(it)), Palette.AMBER)
+                elif owned:
                     price, pc = "✓ OWNED", Palette.OK
                 else:
                     price = self._price(it)
@@ -8097,26 +9326,47 @@ class ShopScene(BackdropScene):
                 screen.text(x, gy + 1, price, pc, bg)
                 if sel:
                     screen.put(x - 1, gy, "▸", GOLD, Palette.PANEL)
-        # detail panel
+        if len(grid) > vis:                                   # scroll bar
+            track = ph - 3
+            thumb = max(1, track * vis // len(grid))
+            pos = (track - thumb) * top // max(1, len(grid) - vis)
+            for k in range(track):
+                screen.put(x0 + 56, y0 + 3 + k, "█" if pos <= k < pos + thumb else "│", GOLD if pos <= k < pos + thumb else Palette.LINE, Palette.PANEL)
+            if top > 0:
+                screen.put(x0 + 56, y0 + 2, "▲", GOLD, Palette.PANEL)
+            if top + vis < len(grid):
+                screen.put(x0 + 56, y0 + 2 + ph - 1, "▼", GOLD, Palette.PANEL)
+        # detail panel (works for the selected item even when its row is scrolled out of view)
         it = self.item
         px, py = x0 + 58, y0 + 2
         col = TIER_COLORS[it.tier]
         owned = save.is_unlocked(it.uid)
-        screen.box(px, py, 36, 21, "double", col, Palette.PANEL, "ITEM")
+        screen.box(px, py, 36, 21, "double", rainbow(t) if it.tier >= 4 else col, Palette.PANEL, "ITEM")
         screen.blit(self._preview(it), px + 1, py + 1)
         screen.center(py + 11, it.name, Palette.WHITE, Palette.PANEL, px, 36)
-        screen.center(py + 12, self.KIND[it.uid.split(":")[0]], col, Palette.PANEL, px, 36)
-        for k, line in enumerate(textwrap.wrap(it.blurb, 32)[:3]):
+        screen.center(py + 12, self.KIND[it.uid.split(":")[0]] + ("  ·  PREMIUM" if it.tier >= 4 else ""), col, Palette.PANEL, px, 36)
+        for k, line in enumerate(textwrap.wrap(it.blurb, 32)[:4]):
             screen.center(py + 13 + k, line, Palette.TEXT, Palette.PANEL, px, 36)
-        screen.center(py + 17, "OWNED" if owned else f"PRICE  {it.coins} ◉" + (f"  {it.credits} ◈" if it.credits else ""),
-                      Palette.OK if owned else GOLD, Palette.PANEL, px, 36)
-        have = f"YOU HAVE  {save.coins:,} ◉  {save.credits:,} ◈"
-        screen.center(py + 18, have, Palette.MUTED, Palette.PANEL, px, 36)
+        if it.uid == "ticket":
+            sub = "SOLD OUT" if owned else (f"ACTIVE BOSS: {TICKET_BOSS_BY_KEY[save.ticket_active].name}" if save.ticket_active
+                                          else f"PRICE  {it.coins} ◉  {it.credits} ◈")
+            screen.center(py + 17, sub, Palette.OK if owned else GOLD, Palette.PANEL, px, 36)
+        else:
+            screen.center(py + 17, "OWNED" if owned else f"PRICE  {it.coins} ◉" + (f"  {it.credits} ◈" if it.credits else ""),
+                          Palette.OK if owned else GOLD, Palette.PANEL, px, 36)
+        screen.center(py + 18, f"YOU HAVE  {save.coins:,} ◉  {save.credits:,} ◈", Palette.MUTED, Palette.PANEL, px, 36)
         if self.msg_t > 0:
             screen.center(py + 19, self.msg, Palette.OK if self.msg_ok else Palette.DANGER, Palette.PANEL, px, 36)
+        elif it.uid == "ticket" and not owned:
+            n = len(save.tickets_won & set(TICKET_BOSS_BY_KEY))
+            if self.pending and int(t * 3) % 2 == 0:
+                screen.center(py + 19, "ENTER AGAIN TO BUY  ·  ESC CANCEL", Palette.AMBER, Palette.PANEL, px, 36)
+            elif not self.pending:
+                screen.center(py + 19, f"[ENTER] {'RESUME FIGHT' if save.ticket_active else 'BUY'}   {n}/{len(TICKET_BOSS_BY_KEY)} BEATEN",
+                              Palette.PRIMARY, Palette.PANEL, px, 36)
         elif owned:
             hint = {"tank": "PICK IT IN PILOT SETUP", "ammo": "PICK IT IN PILOT SETUP", "map": "PICK IT IN BATTLEFIELD",
-                    "theme": "SET IT IN SETTINGS OR PRESS H", "rgb": "PICK IT IN PILOT SETUP"}[it.uid.split(":")[0]]
+                    "theme": "SET IT IN SETTINGS OR PRESS H", "rgb": "PICK IT IN PILOT SETUP", "ticket": "ALL BOSSES DEFEATED"}[it.uid.split(":")[0]]
             screen.center(py + 19, hint, Palette.MUTED, Palette.PANEL, px, 36)
         elif self.pending:
             if int(t * 3) % 2 == 0:
@@ -8124,7 +9374,7 @@ class ShopScene(BackdropScene):
         else:
             why = save.shortfall(it)
             screen.center(py + 19, why if why else "[ENTER] BUY", (200, 90, 90) if why else Palette.PRIMARY, Palette.PANEL, px, 36)
-        draw_keycaps(screen, x0 + 2, y0 + 23, (("1-5", "PAGE"), ("TAB", "NEXT"), ("WASD", "SELECT"), ("ENTER", "BUY"), ("ESC", "BACK")))
+        draw_keycaps(screen, x0 + 2, y0 + ph + 2, (("1-5", "PAGE"), ("TAB", "NEXT"), ("WASD", "SELECT"), ("SHIFT+W/S", "PAGE UP/DN"), ("ENTER", "BUY"), ("ESC", "BACK")))
 
 
 # ============================================================================
@@ -8168,7 +9418,7 @@ def mission_art(m: Mission, t: float, locked: bool) -> PixelCanvas:
     ally, foe = (110, 200, 235), (235, 120, 100)
     if m.kind in ("ufo", "mother") or (m.kind == "coop" and m.coop_ufo):
         big = 2.2 if m.kind == "mother" else 2.0
-        u = _fake_tank(0, pc((90, 230, 160)), 25.0, 3.0, -1, kind="ufo", scale=big, hover=0, hp=5, max_hp=5,
+        u = _fake_tank(0, pc((90, 230, 160)), 25.0, 7.0, -1, kind="ufo", scale=big, hover=4.0, hp=5, max_hp=5,
                        shield=1 if m.kind != "ufo" else 0)
         draw_ufo(cv, u, t)
         if m.kind == "mother":
@@ -8244,8 +9494,10 @@ class MissionsScene(BackdropScene):
         return [a for a in M_ACTS if a[0] <= n][-1]
 
     def _ribbon(self, screen: Screen, x0: int, y: int) -> None:
+        """50 pips in two evenly spaced rows of 25 (3 columns apart); the selected one is bracketed."""
         n, t = len(MISSIONS), self.app.time
-        px = [x0 + 2 + round(i * (self.W - 5) / (n - 1)) for i in range(n)]
+        per, stride = (n + 1) // 2, 3
+        start = x0 + (self.W - per * stride) // 2 + 1
         for i, m in enumerate(MISSIONS):
             st = self._state(m.number)
             col = M_TYPE_COLORS[m.kind]
@@ -8257,14 +9509,18 @@ class MissionsScene(BackdropScene):
                 ch, c = "·", (70, 84, 98)
             if m.rewards and st != "locked":
                 ch = "★" if st == "cleared" else "☆"
-            sel = i == self.sel
-            screen.put(px[i], y + 1, ch, Palette.WHITE if sel else c)
-            if sel:
-                screen.put(px[i], y, "▼", mix(col, Palette.WHITE, 0.5 + 0.4 * math.sin(t * 6)))
-        for k in range(0, n, 5):
-            lab = str(k + 5) if k + 5 <= n else ""
-            if lab:
-                screen.text(px[k + 4] - len(lab) // 2, y + 2, lab, (110, 124, 138))
+            row, k = divmod(i, per)
+            px, py = start + k * stride, y + row
+            if i == self.sel:
+                hl = mix(col, Palette.WHITE, 0.5 + 0.4 * math.sin(t * 6))
+                screen.put(px - 1, py, "[", hl)
+                screen.put(px + 1, py, "]", hl)
+                screen.put(px, py, ch, Palette.WHITE)
+            else:
+                screen.put(px, py, ch, c)
+        for row, (a, b) in enumerate(((1, per), (per + 1, n))):
+            screen.text(x0 + 1, y + row, f"{a:02d}", (110, 124, 138))
+            screen.text(x0 + self.W - 3, y + row, f"{b:02d}", (110, 124, 138))
 
     def _cards(self, screen: Screen, x0: int, cy: int) -> None:
         n, t = len(MISSIONS), self.app.time
@@ -8314,31 +9570,38 @@ class MissionsScene(BackdropScene):
         done = f"{len(save.mission_completed)}/{len(MISSIONS)} CLEARED"
         screen.text(x0 + W - 1 - len(done), y0, done, Palette.OK if len(save.mission_completed) == len(MISSIONS) else Palette.TEXT)
         self._ribbon(screen, x0, y0 + 1)
-        self._cards(screen, x0, y0 + 5)
-        py = y0 + 16
-        screen.box(x0, py, W, 9, "double", mix(col, (0, 0, 0), 0.3), Palette.PANEL, f"MISSION {m.number} - {m.name}", col)
+        self._cards(screen, x0, y0 + 4)
+        py = y0 + 14
+        screen.box(x0, py, W, 11, "double", mix(col, (0, 0, 0), 0.3), Palette.PANEL, f"MISSION {m.number} - {m.name}", col)
         ax = x0 + 3
         foe = {"marathon": f"{m.stages} AI RIVALS", "2v1": "2 AI TANKS", "ufo": "1 ALIEN SAUCER", "coop": "2 AI TANKS" if not m.coop_ufo else "1 ALIEN SAUCER",
                "rush": f"{m.stages} TOURNAMENT BOSSES", "mother": "MOTHERSHIP + 2 DRONES"}[m.kind]
-        rows = [("TYPE", m.type_name, col), ("FOES", foe, Palette.TEXT), ("GOAL", m.objective[:31], Palette.TEXT),
-                ("AI", m.diff.value if m.kind != "marathon" or m.diff is m.diff_end else f"{m.diff.value} > {m.diff_end.value}", Palette.AMBER)]
+        rows = [("TYPE", m.type_name, col), ("FOES", foe, Palette.TEXT)]
         for k, (lab, val, c) in enumerate(rows):
             screen.text(ax, py + 1 + k, f"{lab:<5}", Palette.MUTED, Palette.PANEL)
             screen.text(ax + 6, py + 1 + k, val, c, Palette.PANEL)
-        screen.text(ax, py + 5, m.rule_text[:34], GOLD, Palette.PANEL)
+        goal = textwrap.wrap(m.objective, 30)[:2]
+        screen.text(ax, py + 3, "GOAL", Palette.MUTED, Palette.PANEL)
+        for k, ln in enumerate(goal):
+            screen.text(ax + 6, py + 3 + k, ln, Palette.TEXT, Palette.PANEL)
+        ai = m.diff.value if m.kind != "marathon" or m.diff is m.diff_end else f"{m.diff.value} > {m.diff_end.value}"
+        screen.text(ax, py + 5, "AI", Palette.MUTED, Palette.PANEL)
+        screen.text(ax + 6, py + 5, ai, Palette.AMBER, Palette.PANEL)
+        for k, ln in enumerate(textwrap.wrap(m.rule_text, 34)[:2]):
+            screen.text(ax, py + 6 + k, ln, GOLD, Palette.PANEL)
         status = {"cleared": ("✓ CLEARED - REPLAY ANY TIME", Palette.OK), "open": ("▶ READY", Palette.PRIMARY),
                   "locked": (f"░ LOCKED - CLEAR MISSION {m.number - 1} FIRST", Palette.MUTED)}[st]
-        screen.text(ax, py + 7, status[0], status[1], Palette.PANEL)
+        screen.text(ax, py + 9, status[0][:36], status[1], Palette.PANEL)
         mx = x0 + 40
-        for k, line in enumerate(textwrap.wrap(m.blurb, 26)[:3]):
+        for k, line in enumerate(textwrap.wrap(m.blurb, 28)[:5]):
             screen.text(mx, py + 1 + k, line, Palette.TEXT, Palette.PANEL)
         first_left = m.number not in save.mission_paid
-        screen.text(mx, py + 5, f"{'FIRST CLEAR' if first_left else 'REPLAY'}  {m.first_coins if first_left else m.repeat_coins} ◉",
+        screen.text(mx, py + 7, f"{'FIRST CLEAR' if first_left else 'REPLAY'}  {m.first_coins if first_left else m.repeat_coins} ◉",
                     GOLD if first_left else Palette.MUTED, Palette.PANEL)
         if m.is_coop:
-            screen.text(mx, py + 7, "LOCAL · LAN · AI WINGMAN", (130, 190, 255), Palette.PANEL)
+            screen.text(mx, py + 9, "LOCAL · LAN · AI WINGMAN", (130, 190, 255), Palette.PANEL)
         rx = x0 + 70
-        screen.text(rx, py + 1, "REWARDS", GOLD, Palette.PANEL)
+        screen.text(rx, py + 1, "GRAND PRIZE" if m.number == len(MISSIONS) else "REWARDS", GOLD, Palette.PANEL)
         earned = m.number in save.mission_completed
         for k, uid in enumerate(m.rewards[:5]):
             lab, name = reward_label(uid)
@@ -8445,7 +9708,8 @@ class MissionResultScene(BackdropScene):
             screen.center(y + 5, ("FIRST CLEAR  " if s.first_clear else "REPLAY  " if ok else "CONSOLATION  ") + s.payout.text(), GOLD,
                           Palette.PANEL, x, 64)
         if ok and s.first_clear and m.rewards:
-            screen.center(y + 7, "UNLOCKED", Palette.OK, Palette.PANEL, x, 64)
+            screen.center(y + 7, "GRAND PRIZE UNLOCKED" if m.number == len(MISSIONS) else "UNLOCKED", GOLD if m.number == len(MISSIONS) else Palette.OK,
+                          Palette.PANEL, x, 64)
             for k, uid in enumerate(m.rewards):
                 a = clamp((t - 0.6 - k * 0.5) / 0.4, 0, 1)
                 if a > 0:
@@ -8455,11 +9719,289 @@ class MissionResultScene(BackdropScene):
             screen.center(y + 8, "ALREADY CLEARED - NO NEW REWARDS", Palette.MUTED, Palette.PANEL, x, 64)
         else:
             screen.center(y + 8, "ONLY THIS MISSION RESTARTS", Palette.AMBER, Palette.PANEL, x, 64)
-        if m.number == len(MISSIONS) and ok and s.first_clear and t > 3:
-            screen.center(y + 14, "GRAND PRIZE: THE U.F.O. KIT", GOLD, Palette.PANEL, x, 64)
         if int(t * 2) % 2 == 0 and t > 0.6:
             text = "[ ENTER ] CONTINUE" if ok else ("[ ENTER ] MISSIONS" if s.config.net else "[ ENTER ] MISSIONS     [ R ] RETRY")
             screen.center(y + 17, text, Palette.PRIMARY, Palette.PANEL, x, 64)
+
+
+class LinksScene(BackdropScene):
+    """Where to find the source, the website and the other storefronts."""
+    LINKS = (("SOURCE CODE", "github.com/ethanlabs101/TerminalTanks", True),
+             ("WEBSITE REPO", "github.com/ethanlabs101/terminaltanks-web", True),
+             ("WEBSITE", "ethanlabs101.github.io/terminaltanks-web", True),
+             ("ALL PROJECTS", "github.com/ethanlabs101", True),
+             ("ITCH.IO", "COMING SOON", False),
+             ("STEAM", "COMING SOON", False))
+
+    def __init__(self, app) -> None:
+        super().__init__(app)
+        self.row, self.msg, self.msg_t = 0, "", 0.0
+
+    def handle(self, ev: InputEvent) -> None:
+        if ev.action is Action.BACK:
+            self.app.goto(MenuScene(self.app))
+        elif ev.action is Action.UP:
+            self.row = (self.row - 1) % len(self.LINKS)
+        elif ev.action is Action.DOWN:
+            self.row = (self.row + 1) % len(self.LINKS)
+        elif ev.confirm:
+            _, url, live = self.LINKS[self.row]
+            if not live:
+                self.msg, self.msg_t = "NOT LIVE YET - CHECK BACK SOON", 2.5
+                return
+            try:
+                if IS_WEB:
+                    import js                                    # Pyodide: let the page open the tab
+                    js.window.open("https://" + url, "_blank")
+                    ok = True
+                else:
+                    import webbrowser
+                    ok = webbrowser.open("https://" + url)
+            except Exception:
+                ok = False
+            self.msg, self.msg_t = ("OPENED IN YOUR BROWSER" if ok else "COULD NOT OPEN A BROWSER - TYPE THE ADDRESS"), 2.5
+
+    def update(self, dt: float) -> None:
+        super().update(dt)
+        self.msg_t = max(0.0, self.msg_t - dt)
+
+    def draw(self, screen: Screen) -> None:
+        super().draw(screen)
+        w, h = 70, 21
+        x, y = panel(screen, w, h, "TERMINAL TANKS  ·  FIND US")
+        screen.center(y + 2, "Free, open source and built by one developer.", Palette.TEXT, Palette.PANEL, x, w)
+        screen.center(y + 3, "Play it, read it, fork it, share it.", Palette.MUTED, Palette.PANEL, x, w)
+        for i, (lab, url, live) in enumerate(self.LINKS):
+            ry, sel = y + 5 + i * 2, i == self.row
+            bg = Palette.PANEL_HI if sel else Palette.PANEL
+            screen.fill(x + 2, ry, w - 4, 1, bg)
+            screen.text(x + 4, ry, lab, Palette.WHITE if sel else Palette.MUTED, bg)
+            screen.text(x + 20, ry, url, (GOLD if sel else Palette.PRIMARY) if live else Palette.AMBER, bg)
+        screen.center(y + 18, self.msg if self.msg_t > 0 else "More games from ethanlabs101 are on the way.",
+                      Palette.OK if self.msg_t > 0 and "OPENED" in self.msg else (Palette.AMBER if self.msg_t > 0 else Palette.MUTED), Palette.PANEL, x, w)
+        draw_keycaps(screen, x + 14, y + 19, (("W/S", "SELECT"), ("ENTER", "OPEN"), ("ESC", "BACK")), Palette.PANEL)
+
+
+class WorkshopScene(BackdropScene):
+    """Tank Workshop: combine unlocked components, name the tank, write its lore, preview it and build it for a fee."""
+    ROWS = ("load", "turret", "hull", "track", "barrel", "glow", "ambient", "accent", "name", "lore", "build", "equip", "delete")
+    LABEL = {"load": "TANK", "turret": "TURRET", "hull": "HULL", "track": "TRACKS", "barrel": "BARREL", "glow": "GLOW", "ambient": "AMBIENT",
+             "accent": "ACCENT", "name": "NAME", "lore": "LORE", "build": "BUILD", "equip": "EQUIP", "delete": "DELETE"}
+
+    def __init__(self, app) -> None:
+        super().__init__(app)
+        self.row, self.msg, self.msg_ok, self.msg_t = 0, "", True, 0.0
+        self.stage = PreviewStage(app.settings, 46, 26, 2)
+        self.load = 0                                   # 0 = a new design, n = saved tank n
+        self.confirm_delete = False
+        self.draft = {"parts": dict(CUSTOM_FALLBACK), "name": "MY TANK", "lore": "Built in the workshop."}
+        self.opts = workshop_components(app.save)
+
+    def _saved(self) -> list:
+        return self.app.save.custom_tanks
+
+    def _sync_draft(self) -> None:
+        if self.load > 0 and self.load <= len(self._saved()):
+            rec = self._saved()[self.load - 1]
+            self.draft = {"parts": dict(CUSTOM_FALLBACK, **{k: v for k, v in (rec.get("parts") or {}).items() if k in CUSTOM_SLOTS}),
+                          "name": str(rec.get("name", "")), "lore": str(rec.get("lore", ""))}
+
+    def _design(self) -> TankDesign:
+        return design_from_custom({"id": "preview", "name": self.draft["name"] or "CUSTOM", "lore": self.draft["lore"], "parts": self.draft["parts"]})
+
+    def _cycle(self, slot: str, d: int) -> None:
+        opts = self.opts[slot]
+        cur = self.draft["parts"].get(slot, CUSTOM_FALLBACK[slot])
+        self.draft["parts"][slot] = opts[(opts.index(cur) + d) % len(opts)] if cur in opts else opts[0]
+
+    def handle(self, ev: InputEvent) -> None:
+        key, raw, save = self.ROWS[self.row], ev.raw, self.app.save
+        if ev.action is Action.BACK:
+            self.confirm_delete = False if self.confirm_delete else self.confirm_delete
+            if not self.confirm_delete:
+                self.app.goto(MenuScene(self.app))
+            return
+        if key in ("name", "lore") and len(raw) == 1 and raw.isprintable():       # typing: letters never navigate here
+            cap = 14 if key == "name" else 60
+            if len(self.draft[key]) < cap and (raw.isalnum() or raw in " -.,!'"):
+                self.draft[key] += raw.upper() if key == "name" else raw
+            return
+        if key in ("name", "lore") and raw == "SPACE":
+            if len(self.draft[key]) < (14 if key == "name" else 60):
+                self.draft[key] += " "
+            return
+        if raw == "BACKSPACE" and key in ("name", "lore"):
+            self.draft[key] = self.draft[key][:-1]
+            return
+        if ev.action is Action.UP:
+            self.row, self.confirm_delete = (self.row - 1) % len(self.ROWS), False
+        elif ev.action is Action.DOWN:
+            self.row, self.confirm_delete = (self.row + 1) % len(self.ROWS), False
+        elif ev.action in (Action.LEFT, Action.RIGHT):
+            d = -1 if ev.action is Action.LEFT else 1
+            if key == "load":
+                self.load = (self.load + d) % (len(self._saved()) + 1)
+                self._sync_draft()
+            elif key in self.opts:
+                self._cycle(key, d * (5 if ev.coarse else 1))
+        elif ev.confirm:
+            if key == "build":
+                why = save.create_custom(self.draft["parts"], self.draft["name"].strip() or "CUSTOM", self.draft["lore"].strip())
+                self.msg_ok, self.msg, self.msg_t = (not why), why or f"BUILT: {(self.draft['name'].strip() or 'CUSTOM')}  (-{CUSTOM_TANK_FEE} COINS)", 3.0
+                if not why:
+                    self.load = len(save.custom_tanks)
+                    self.app._wallet_flash = 1.4
+            elif key == "equip" and self.load > 0:
+                save.loadouts[0].tank = f"custom:{self._saved()[self.load - 1]['id']}"
+                save.flush()
+                self.msg_ok, self.msg, self.msg_t = True, "EQUIPPED AS YOUR PLAYER 1 TANK", 2.5
+            elif key == "equip":
+                self.msg_ok, self.msg, self.msg_t = False, "BUILD IT FIRST - THEN EQUIP", 2.5
+            elif key == "delete" and self.load > 0:
+                if not self.confirm_delete:
+                    self.confirm_delete = True
+                    self.msg_ok, self.msg, self.msg_t = False, "ENTER AGAIN TO DELETE FOR GOOD", 3.0
+                else:
+                    save.delete_custom(self._saved()[self.load - 1]["id"])
+                    self.load, self.confirm_delete = 0, False
+                    self.msg_ok, self.msg, self.msg_t = True, "TANK DELETED", 2.0
+            elif key == "delete":
+                self.msg_ok, self.msg, self.msg_t = False, "NOTHING SAVED TO DELETE", 2.0
+
+    def update(self, dt: float) -> None:
+        super().update(dt)
+        self.stage.update(dt)
+        self.msg_t = max(0.0, self.msg_t - dt)
+
+    HELP = ("HOW IT WORKS: you can only use parts from tanks you own - every tank you unlock or buy adds its parts to the "
+            "lists above. Mix parts, name it, add lore, then BUILD for {fee:,} coins.")
+
+    def draw(self, screen: Screen) -> None:
+        super().draw(screen)
+        save, t = self.app.save, self.app.time
+        W, H = 93, 26
+        x, y = (screen.cols - W) // 2, max(0, (screen.rows - H) // 2)
+        screen.box(x, y, 44, H, "double", Palette.LINE, Palette.PANEL, "TANK WORKSHOP")
+        for i, key in enumerate(self.ROWS):
+            ry, sel = y + 2 + i, i == self.row
+            bg = Palette.PANEL_HI if sel else Palette.PANEL
+            screen.fill(x + 2, ry, 40, 1, bg)
+            screen.text(x + 3, ry, f"{self.LABEL[key]:<8}", Palette.WHITE if sel else Palette.MUTED, bg)
+            if key == "load":
+                val = "NEW DESIGN" if self.load == 0 else f"{self.load}/{len(self._saved())}  {self._saved()[self.load - 1].get('name', '')[:14]}"
+            elif key in self.opts:
+                val = self.draft["parts"].get(key, "-").upper().replace("_", " ")
+            elif key == "name":
+                val = self.draft["name"] + ("█" if sel and int(t * 2) % 2 == 0 else "")
+            elif key == "lore":
+                val = (self.draft["lore"] + ("█" if sel and int(t * 2) % 2 == 0 else ""))[-26:]
+            elif key == "build":
+                val = f"▶ {CUSTOM_TANK_FEE} COINS"
+            elif key == "equip":
+                val = "▶ USE AS P1"
+            else:
+                val = "▶ REMOVE" if not self.confirm_delete else "▶ SURE?"
+            val = f"◄ {val} ►" if sel and key in ("load",) + tuple(self.opts) else val
+            screen.text(x + 41 - len(val), ry, val[:30], GOLD if sel else Palette.TEXT, bg)
+        my = y + 3 + len(self.ROWS)
+        if self.msg_t > 0:
+            wrap_center(screen, my, self.msg, 40, Palette.OK if self.msg_ok else Palette.DANGER, Palette.PANEL, x, 44, 2)
+        else:
+            screen.center(my, f"{len(save.custom_tanks)}/{CUSTOM_TANK_MAX} SAVED", Palette.MUTED, Palette.PANEL, x, 44)
+        for k, ln in enumerate(textwrap.wrap(self.HELP.format(fee=CUSTOM_TANK_FEE), 40)[:5]):
+            screen.text(x + 2, my + 2 + k, ln, Palette.MUTED, Palette.PANEL)
+        draw_keycaps(screen, x + 3, y + H - 2, (("▲▼", "ROW"), ("◄►", "PART"), ("ENTER", "DO"), ("ESC", "BACK")), Palette.PANEL)
+        # preview
+        px = x + 45
+        screen.box(px, y, 48, H, "double", Palette.LINE, Palette.PANEL, "PREVIEW")
+        d = self._design()
+        lo = save.loadout(0)
+        self.stage.set_kit(d, COLOR_BY_NAME[lo.tank_color], AMMO_BY_KEY[lo.ammo], COLOR_BY_NAME[lo.shot_color], 0.0)
+        screen.blit(self.stage.render(), px + 1, y + 1)
+        screen.center(y + 14, d.name, Palette.WHITE, Palette.PANEL, px, 48)
+        wrap_center(screen, y + 15, d.blurb, 44, Palette.TEXT, Palette.PANEL, px, 48, 2)
+        screen.center(y + 17, f"{d.barrel.upper()}  ·  {d.glow.upper()}  ·  {d.ambient.upper()}"[:44], Palette.MUTED, Palette.PANEL, px, 48)
+        screen.center(y + 18, f"YOU HAVE {save.coins:,} ◉", GOLD if save.coins >= CUSTOM_TANK_FEE else Palette.DANGER, Palette.PANEL, px, 48)
+        # browsable list of every custom tank
+        saved = self._saved()
+        screen.text(px + 2, y + 19, f"MY TANKS  {len(saved)}/{CUSTOM_TANK_MAX}", Palette.AMBER, Palette.PANEL)
+        hint = "◄► ON TANK ROW TO BROWSE"
+        screen.text(px + 46 - len(hint), y + 19, hint, Palette.MUTED, Palette.PANEL)
+        total, vis = len(saved) + 1, 5
+        top = int(clamp(self.load - vis // 2, 0, max(0, total - vis)))
+        equipped = save.loadouts[0].tank
+        for r in range(vis):
+            i = top + r
+            if i >= total:
+                break
+            cur = i == self.load
+            bg = Palette.PANEL_HI if cur else Palette.PANEL
+            screen.fill(px + 2, y + 20 + r, 44, 1, bg)
+            if i == 0:
+                label = "+ NEW DESIGN"
+            else:
+                rec = saved[i - 1]
+                label = f"{i:02d} {str(rec.get('name', ''))[:22]}" + ("  ★ EQUIPPED" if equipped == f"custom:{rec['id']}" else "")
+            screen.text(px + 3, y + 20 + r, ("▶ " if cur else "  ") + label, Palette.WHITE if cur else Palette.TEXT, bg)
+        if top > 0:
+            screen.put(px + 45, y + 20, "▲", Palette.PRIMARY_DIM, Palette.PANEL)
+        if top + vis < total:
+            screen.put(px + 45, y + 24, "▼", Palette.PRIMARY_DIM, Palette.PANEL)
+
+
+class TicketResultScene(BackdropScene):
+    def __init__(self, app, session: "TicketSession") -> None:
+        super().__init__(app)
+        self.session, self.boss, self.t = session, session.boss, 0.0
+
+    def enter(self) -> None:
+        self.app._wallet_flash = 1.6
+        if self.session.completed:
+            self.app.backdrop.celebrate_with([DESIGN_BY_KEY[self.boss.tank].accent, GOLD, Palette.WHITE])
+
+    def exit(self) -> None:
+        self.app.backdrop.celebrate_with(None)
+
+    def handle(self, ev: InputEvent) -> None:
+        s = self.session
+        if ev.raw in ("r", "R") and not s.completed:
+            s.restart(self.app)
+        elif ev.confirm:
+            self.app.goto(ShopScene(self.app, 4))
+
+    def update(self, dt: float) -> None:
+        super().update(dt)
+        self.t += dt
+
+    def draw(self, screen: Screen) -> None:
+        super().draw(screen)
+        s, b, t = self.session, self.boss, self.t
+        ok = s.completed
+        col = DESIGN_BY_KEY[b.tank].accent
+        x, y = panel(screen, 64, 20, "TERMINAL TICKET", fg=col if ok else Palette.DANGER)
+        head = "B O S S   D E F E A T E D" if ok else "T I C K E T   B A T T L E   L O S T"
+        if ok:
+            prism_text(screen, x + (64 - len(head)) // 2, y + 2, head, t, 0.12, 0.05, 0.55, 1.0, Palette.PANEL)
+        else:
+            screen.center(y + 2, head, Palette.DANGER, Palette.PANEL, x, 64)
+        screen.center(y + 3, b.name, col, Palette.PANEL, x, 64)
+        if s.payout:
+            screen.center(y + 5, ("VICTORY  " if ok else "CONSOLATION  ") + s.payout.text(), GOLD, Palette.PANEL, x, 64)
+        if ok:
+            screen.center(y + 7, "CLAIMED", Palette.OK, Palette.PANEL, x, 64)
+            for k, uid in enumerate(b.reward_ids()):
+                a = clamp((t - 0.6 - k * 0.5) / 0.4, 0, 1)
+                if a > 0:
+                    lab, name = reward_label(uid)
+                    screen.center(y + 9 + k, f"{lab}: {name}", mix(Palette.PANEL, GOLD, a), Palette.PANEL, x, 64)
+            left = len(TICKET_BOSS_BY_KEY) - len(self.app.save.tickets_won & set(TICKET_BOSS_BY_KEY))
+            screen.center(y + 14, "ALL BOSSES DEFEATED - TICKETS SOLD OUT" if left == 0 else f"{left} BOSS{'ES' if left != 1 else ''} LEFT IN THE VAULT",
+                          Palette.MUTED, Palette.PANEL, x, 64)
+        else:
+            screen.center(y + 8, "YOUR TICKET IS KEPT", Palette.AMBER, Palette.PANEL, x, 64)
+            screen.center(y + 9, "RETRY ANY TIME - IT IS NOT WASTED", Palette.MUTED, Palette.PANEL, x, 64)
+        if int(t * 2) % 2 == 0 and t > 0.6:
+            screen.center(y + 17, "[ ENTER ] SHOP" if ok else "[ ENTER ] SHOP     [ R ] RETRY", Palette.PRIMARY, Palette.PANEL, x, 64)
 
 
 class TournamentResultScene(BackdropScene):
@@ -8509,8 +10051,8 @@ class TournamentResultScene(BackdropScene):
         self.stage.set_kit(DESIGN_BY_KEY[lv.tank], boss_col, AMMO_BY_KEY[lv.ammo], COLOR_BY_NAME[lv.boss_shot], 0.0 if ok else 0.5)
         screen.blit(self.stage.render(), x + 1, y + 2)
         screen.center(y + 16, f"{DESIGN_BY_KEY[lv.tank].name}  +  {AMMO_BY_KEY[lv.ammo].name}", Palette.TEXT, Palette.PANEL, x, 46)
-        screen.center(y + 18, DESIGN_BY_KEY[lv.tank].blurb, Palette.MUTED, Palette.PANEL, x, 46)
-        screen.center(y + 19, AMMO_BY_KEY[lv.ammo].blurb, Palette.MUTED, Palette.PANEL, x, 46)
+        n1 = wrap_center(screen, y + 18, DESIGN_BY_KEY[lv.tank].blurb, 42, Palette.MUTED, Palette.PANEL, x, 46, 2)
+        wrap_center(screen, y + 18 + n1, AMMO_BY_KEY[lv.ammo].blurb, 42, Palette.MUTED, Palette.PANEL, x, 46, 2)
         rx = x + 46
         screen.box(rx, y, 46, 24, "double", edge, Palette.PANEL, f"LEVEL {lv.number}")
         if ok:
@@ -8574,27 +10116,23 @@ class CheatScene(BackdropScene):
     def draw(self, screen: Screen) -> None:
         super().draw(screen)
         save, t = self.app.save, self.app.time
-        x, y = panel(screen, 64, 20, "CHEAT CODES")
+        x, y = panel(screen, 64, 24, "CHEAT CODES")
         screen.center(y + 2, "ENTER A CODE", Palette.AMBER, Palette.PANEL, x, 64)
         screen.box(x + 8, y + 3, 48, 3, "single", Palette.LINE, Palette.PANEL_HI)
         cursor = "█" if int(t * 2) % 2 == 0 else " "
         screen.text(x + 10, y + 4, (self.text + cursor)[-44:], Palette.WHITE, Palette.PANEL_HI)
         if self.msg_t > 0:
             screen.center(y + 7, self.msg, Palette.OK if self.msg_ok else Palette.DANGER, Palette.PANEL, x, 64)
-        tanks, ammo = save.unlocked_tanks(), save.unlocked_ammo()
         n_levels = sum(save.level_unlocked(l.number) for l in TOURNAMENT)
-        lines = [
-            ("TANKS", f"{len(tanks & {d.key for d in DESIGNS})}/{len(DESIGNS)}" + ("  + SECRET" if tanks & {d.key for d in SECRET_DESIGNS} else "")),
-            ("AMMO", f"{len(ammo & {a.key for a in AMMOS})}/{len(AMMOS)}" + ("  + SECRET" if ammo & {a.key for a in SECRET_AMMOS} else "")),
-            ("MAPS", f"{len(save.unlocked_maps())}/{len(SPECIAL_MAPS)} SPECIAL"),
+        lines = [(lab, f"{have}/{total}") for lab, have, total in content_counts(save)] + [
             ("LEVELS", f"{n_levels}/{len(TOURNAMENT)} OPEN  ·  {len(save.completed)}/{len(TOURNAMENT)} CLEARED"),
-            ("MASTER", "DIFFICULTY UNLOCKED" if save.master_unlocked else "DIFFICULTY LOCKED"),
-            ("HOME", "  ·  ".join(save.home_modes())),
-        ]
+            ("MISSION", f"{sum(save.mission_unlocked(m.number) for m in MISSIONS)}/{len(MISSIONS)} OPEN  ·  {len(save.mission_completed)}/{len(MISSIONS)} CLEARED"),
+            ("TICKETS", f"{len(save.tickets_won & set(TICKET_BOSS_BY_KEY))}/{len(TICKET_BOSS_BY_KEY)} BOSSES"),
+            ("MASTER", "DIFFICULTY UNLOCKED" if save.master_unlocked else "DIFFICULTY LOCKED")]
         for k, (lab, val) in enumerate(lines):
-            screen.text(x + 12, y + 9 + k, f"{lab:<7}", Palette.MUTED, Palette.PANEL)
-            screen.text(x + 20, y + 9 + k, val, Palette.TEXT, Palette.PANEL)
-        draw_keycaps(screen, x + 10, y + 17, (("ENTER", "REDEEM"), ("BKSP", "DELETE"), ("ESC", "BACK")), Palette.PANEL)
+            screen.text(x + 12, y + 9 + k, f"{lab:<8}", Palette.MUTED, Palette.PANEL)
+            screen.text(x + 21, y + 9 + k, val, Palette.TEXT, Palette.PANEL)
+        draw_keycaps(screen, x + 10, y + 21, (("ENTER", "REDEEM"), ("BKSP", "DELETE"), ("ESC", "BACK")), Palette.PANEL)
 
 
 class MatchResultScene(BackdropScene):
@@ -8633,15 +10171,28 @@ class MatchResultScene(BackdropScene):
                 screen.center(y + 4 + r, line, Palette.WHITE, Palette.PANEL, x, 46)
         else:
             screen.center(y + 6, f"{a}   —   {b}", Palette.WHITE, Palette.PANEL, x, 46)
-        human_lost = s.config.single and w == 1
-        screen.center(y + 10, "DEFEAT" if human_lost else "VICTORY!", Palette.DANGER if human_lost else Palette.AMBER,
-                      Palette.PANEL, x, 46)
+        cfg, lw = s.config, s.wins[1 - w]
+        label = cfg.label or f"FIRST TO {cfg.target}"
+        if cfg.net is not None:                               # LAN: each machine hears it from its own player's side
+            mine = cfg.my_owner
+            won = w == mine
+            head, hcol = ("VICTORY!", Palette.OK) if won else ("DEFEAT", Palette.DANGER)
+            cond = f"{label}: YOU {'WON' if won else 'LOST'} {s.wins[mine]} TO {s.wins[1 - mine]}"
+        elif cfg.single:
+            won = w == 0
+            head, hcol = ("VICTORY!", Palette.AMBER) if won else ("DEFEAT", Palette.DANGER)
+            cond = f"{label}: {'YOU WON' if won else 'THE AI WON'} {s.wins[0]} TO {s.wins[1]}"
+        else:
+            head, hcol = f"{s.team_name(w)} WINS!", Palette.AMBER
+            cond = f"{label}: {s.team_name(w)} WON {s.wins[w]} TO {lw}"
+        screen.center(y + 10, head[:40], hcol, Palette.PANEL, x, 46)
+        screen.center(y + 11, cond[:44], Palette.TEXT, Palette.PANEL, x, 46)
         if s.payout:
-            screen.center(y + 12, s.payout.text(), GOLD, Palette.PANEL, x, 46)
-        elif s.config.mode == "two":
-            screen.center(y + 12, "TWO-PLAYER MATCHES EARN NO COINS", Palette.MUTED, Palette.PANEL, x, 46)
+            screen.center(y + 13, s.payout.text(), GOLD, Palette.PANEL, x, 46)
+        elif cfg.mode in ("two", "lan"):
+            screen.center(y + 13, "TWO-PLAYER AND LAN MATCHES EARN NO COINS", Palette.MUTED, Palette.PANEL, x, 46)
         if int(self.app.time * 2) % 2 == 0:
-            screen.center(y + 14, "[ ENTER ]", Palette.PRIMARY, Palette.PANEL, x, 46)
+            screen.center(y + 15, "[ ENTER ]", Palette.PRIMARY, Palette.PANEL, x, 46)
 
 
 # ============================================================================
@@ -8703,8 +10254,9 @@ class Application:
         if len(self.stack) > 1:
             self.stack.pop().exit()
 
-    def start_match(self, cfg: MatchConfig, mapdef: Optional[MapDefinition]) -> None:
+    def start_match(self, cfg: MatchConfig, mapdef: Optional[MapDefinition], wind: Optional[float] = None) -> None:
         session = MatchSession(cfg, mapdef, self.rng.randrange(1 << 30))
+        session.wind_override = wind
         self.goto(BattleScene(self, session))
 
     def start_tournament(self, level: TournamentLevel, cfg: Optional[MatchConfig] = None) -> None:
@@ -8712,7 +10264,7 @@ class Application:
             lo = self.save.loadout(0)
             me = PlayerSetup("PLAYER", "YOU", COLOR_BY_NAME[lo.tank_color], COLOR_BY_NAME[lo.shot_color], False, lo.tank, lo.ammo,
                              level.player_hp)
-            cfg = MatchConfig([me, boss_setup(level, color_index(lo.tank_color))], True, level.difficulty, "tournament", level.precision)
+            cfg = MatchConfig([me, boss_setup(level, color_index(lo.tank_color))], True, level.difficulty, "tournament", level.precision, ammo_fx=False)
         self.goto(BattleScene(self, TournamentSession(level, cfg, self.rng.randrange(1 << 30))))
 
     def home_theme(self) -> str:
