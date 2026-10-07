@@ -1,5 +1,7 @@
 {
   "tank:ranger": "ranger.png",
   "tank:bulwark": "bulwark.png",
-  "tank:viper": "viper.png"
+  "tank:viper": "viper.png",
+  "tank:gemini": "gemini.png",
+  "tank:crawler": "crawler.png"
 }
