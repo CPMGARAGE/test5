@@ -34,7 +34,7 @@ const TT = {
   document.head.appendChild(icon);
 
   const mk = (n) => Array.from({ length: n }, () => `${(Math.random() * 100).toFixed(1)}vw ${(Math.random() * 78).toFixed(1)}vh ${Math.random() < .2 ? '#bfe9ff' : '#fff'}`).join(',');
-  const nav = [['play.html', 'Play', 'play'], ['home.html', 'Home', 'home'], ['catalog.html', 'Catalog', 'catalog'], ['cheats.html', 'Cheat codes', 'cheats'], ['save-forge.html', 'Save forge', 'forge'], ['coming-soon.html', 'Coming soon', 'soon'], ['about.html', 'About', 'about']];
+  const nav = [['play.html', 'Play', 'play'], ['home.html', 'Home', 'home'], ['catalog.html', 'Catalog', 'catalog'], ['cheats.html', 'Cheat codes', 'cheats'], ['save-forge.html', 'Save forge', 'forge'], ['coming-soon.html', 'Coming soon', 'soon'], ['install.html', 'Install', 'install'], ['links.html', 'Links', 'links'], ['about.html', 'About', 'about']];
   const main = document.querySelector('main');
   main.classList.add('stage');
   const title = main.dataset.title || '';
