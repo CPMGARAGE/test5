@@ -8,5 +8,6 @@
   "ammo:tracer": "tracer.gif",
   "ammo:plasma": "plasma.gif",
   "ammo:flak": "flak.gif",
-  "ammo:comet": "comet.gif"
+  "ammo:comet": "comet.gif",
+  "map:valley": "valley.png"
 }
