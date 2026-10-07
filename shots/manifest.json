@@ -4,5 +4,9 @@
   "tank:viper": "viper.png",
   "tank:gemini": "gemini.png",
   "tank:crawler": "crawler.png",
-  "ammo:standard": "standard.gif"
+  "ammo:standard": "standard.gif",
+  "ammo:tracer": "tracer.gif",
+  "ammo:plasma": "plasma.gif",
+  "ammo:flak": "flak.gif",
+  "ammo:comet": "comet.gif"
 }
