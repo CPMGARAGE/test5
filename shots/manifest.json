@@ -3,5 +3,6 @@
   "tank:bulwark": "bulwark.png",
   "tank:viper": "viper.png",
   "tank:gemini": "gemini.png",
-  "tank:crawler": "crawler.png"
+  "tank:crawler": "crawler.png",
+  "ammo:standard": "standard.gif"
 }
